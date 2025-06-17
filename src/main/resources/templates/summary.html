@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resumen Técnico - GitHub Repository Visualizer</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Estilos personalizados -->
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+    
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">GitHub Visualizer</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" th:href="@{/}">Inicio</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">Análisis de Tecnologías</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="btnGenerarResumen">Generar Resumen</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2>Análisis Técnico del Repositorio</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="repoAnalysisForm" class="mb-4">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="repoUrlAnalysis" 
+                                       placeholder="Ingrese URL del repositorio (ej: usuario/repositorio)" required>
+                                <button type="submit" class="btn btn-primary">Analizar</button>
+                            </div>
+                        </form>
+                        
+                        <div id="analysisLoadingIndicator" class="text-center d-none">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Analizando...</span>
+                            </div>
+                            <p>Analizando el repositorio...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sección de resultados del análisis (inicialmente oculta) -->
+        <div id="analysisResults" class="d-none">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3>Distribución de Lenguajes</h3>
+                        </div>
+                        <div class="card-body">
+                            <canvas id="languagesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3>Tecnologías Detectadas</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="technologiesList">
+                                <!-- Se llenará dinámicamente -->
+                                <div class="text-center text-muted" id="noTechnologiesMessage">
+                                    <p>No se han detectado tecnologías aún</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3>Estructura del Proyecto</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="projectStructure" class="project-structure">
+                                <!-- Se llenará dinámicamente con la estructura de carpetas -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h3>Resumen Técnico</h3>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-outline-secondary" id="btnEditResumen">
+                                    <i class="bi bi-pencil"></i> Editar
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" id="btnExportarHTML">
+                                    <i class="bi bi-file-earmark-code"></i> HTML
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" id="btnExportarMD">
+                                    <i class="bi bi-file-earmark-text"></i> Markdown
+                                </button>
+                                <button class="btn btn-sm btn-outline-primary" id="btnExportarPDF">
+                                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="technicalSummary">
+                                <!-- Resumen técnico generado -->
+                                <div id="summaryView">
+                                    <h4>Propósito del Proyecto</h4>
+                                    <p id="projectPurpose" class="mb-4">
+                                        <!-- Se llenará dinámicamente -->
+                                    </p>
+                                    
+                                    <h4>Tecnologías Principales</h4>
+                                    <ul id="mainTechnologies" class="mb-4">
+                                        <!-- Se llenará dinámicamente -->
+                                    </ul>
+                                    
+                                    <h4>Roles y Responsabilidades</h4>
+                                    <p id="rolesResponsibilities" class="mb-4">
+                                        <!-- Se llenará dinámicamente -->
+                                    </p>
+                                    
+                                    <h4>Logros Destacables</h4>
+                                    <ul id="achievements" class="mb-4">
+                                        <!-- Se llenará dinámicamente -->
+                                    </ul>
+                                    
+                                    <h4>Fragmentos de Código Relevantes</h4>
+                                    <div id="codeSnippets" class="mb-4">
+                                        <!-- Se llenará dinámicamente -->
+                                    </div>
+                                    
+                                    <h4>Calidad de la Documentación</h4>
+                                    <p id="documentationQuality" class="mb-4">
+                                        <!-- Se llenará dinámicamente -->
+                                    </p>
+                                </div>
+                                
+                                <!-- Formulario de edición (inicialmente oculto) -->
+                                <div id="summaryEditForm" class="d-none">
+                                    <form id="editSummaryForm">
+                                        <div class="mb-3">
+                                            <label for="editProjectPurpose" class="form-label">Propósito del Proyecto</label>
+                                            <textarea class="form-control" id="editProjectPurpose" rows="3"></textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="editMainTechnologies" class="form-label">Tecnologías Principales</label>
+                                            <textarea class="form-control" id="editMainTechnologies" rows="3" 
+                                                      placeholder="Una tecnología por línea"></textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="editRolesResponsibilities" class="form-label">Roles y Responsabilidades</label>
+                                            <textarea class="form-control" id="editRolesResponsibilities" rows="3"></textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="editAchievements" class="form-label">Logros Destacables</label>
+                                            <textarea class="form-control" id="editAchievements" rows="3" 
+                                                      placeholder="Un logro por línea"></textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="editCodeSnippets" class="form-label">Fragmentos de Código Relevantes</label>
+                                            <textarea class="form-control" id="editCodeSnippets" rows="5" 
+                                                      placeholder="```lenguaje&#10;código&#10;```"></textarea>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <label for="editDocumentationQuality" class="form-label">Calidad de la Documentación</label>
+                                            <textarea class="form-control" id="editDocumentationQuality" rows="2"></textarea>
+                                        </div>
+                                        
+                                        <div class="text-end">
+                                            <button type="button" class="btn btn-secondary" id="btnCancelEdit">Cancelar</button>
+                                            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle con Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Scripts personalizados -->
+    <script th:src="@{/js/summaryEditor.js}"></script>
+</body>
+</html> 
