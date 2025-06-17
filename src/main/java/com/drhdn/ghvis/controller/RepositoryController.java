@@ -4,6 +4,7 @@ import com.drhdn.ghvis.model.Commit;
 import com.drhdn.ghvis.model.PullRequest;
 import com.drhdn.ghvis.model.Issue;
 import com.drhdn.ghvis.service.GithubService;
+import com.drhdn.ghvis.service.CommitCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,6 +26,7 @@ import java.util.List;
 public class RepositoryController {
 
     private final GithubService githubService;
+    private final CommitCacheService commitCacheService;
 
     /**
      * Devuelve la lista de commits de un repositorio.
@@ -38,7 +40,7 @@ public class RepositoryController {
         }
         String owner = parts[0];
         String repo = parts[1];
-        return githubService.getCommits(owner, repo).collectList();
+        return commitCacheService.getCommits(owner, repo).collectList();
     }
 
     /**
