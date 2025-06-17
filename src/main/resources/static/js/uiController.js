@@ -30,8 +30,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (repoUrl) {
                 // Iniciar la carga de la visualización
                 loadCommits(repoUrl);
-                // Conectar al stream de eventos
-                connectToEventStream(repoUrl);
+                // Conectar al stream de eventos si tiempo-real habilitado
+                if (window.REALTIME_ENABLED) {
+                    connectToEventStream(repoUrl);
+                }
             }
         });
     }
