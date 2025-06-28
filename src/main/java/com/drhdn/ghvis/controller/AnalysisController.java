@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Mono;
 
+import java.security.Principal;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +31,7 @@ public class AnalysisController {
      * Endpoint consumido por summaryEditor.js
      */
     @GetMapping(value = "/analyze", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Map<String, Object>> analyzeRepository(@RequestParam("repo") String repoParam) {
+    public Mono<Map<String, Object>> analyzeRepository(@RequestParam("repo") String repoParam, Principal principal) {
         String[] parts = repoParam.split("/");
         if (parts.length != 2) {
             return Mono.error(new IllegalArgumentException("Parámetro 'repo' inválido."));
@@ -38,8 +39,8 @@ public class AnalysisController {
         String owner = parts[0];
         String repo = parts[1];
 
-        // Distribución de lenguajes
-        Mono<Map<String, Long>> languagesMono = githubService.getLanguages(owner, repo);
+        // Distribución de lenguajes usando OAuth2 del usuario autenticado
+        Mono<Map<String, Long>> languagesMono = githubService.getLanguages(owner, repo, principal);
 
         // Para simplificar, dejamos tecnologías y resumen como listas vacías
         List<Technology> technologies = Collections.emptyList();

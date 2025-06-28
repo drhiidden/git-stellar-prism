@@ -29,7 +29,7 @@ public class CommitCacheService {
     // TTL de caché
     private static final Duration TTL = Duration.ofHours(1);
 
-    public Flux<Commit> getCommits(String owner, String repo) {
+    public Flux<Commit> getCommits(String owner, String repo, java.security.Principal principal) {
         String repoKey = owner + "/" + repo;
 
         RepoCache cache = repoCacheRepository.findById(repoKey).orElse(null);
@@ -38,6 +38,7 @@ public class CommitCacheService {
             // devolver desde cache
             try {
                 List<Commit> commits = objectMapper.readValue(cache.getCommitsJson(), new TypeReference<List<Commit>>() {});
+                log.debug("Commits obtenidos desde cache para {}/{}", owner, repo);
                 return Flux.fromIterable(commits);
             } catch (Exception e) {
                 log.error("Error al deserializar commits del cache", e);
@@ -46,7 +47,7 @@ public class CommitCacheService {
         }
 
         // Llamar a GitHub y almacenar
-        return githubService.getCommits(owner, repo)
+        return githubService.getCommits(owner, repo, principal)
                 .collectList()
                 .doOnNext(list -> {
                     try {
@@ -57,10 +58,28 @@ public class CommitCacheService {
                                 .updatedAt(Instant.now())
                                 .build();
                         repoCacheRepository.save(newCache);
+                        log.debug("Commits guardados en cache para {}/{}", owner, repo);
                     } catch (Exception ex) {
                         log.error("Error guardando commits en cache", ex);
                     }
                 })
                 .flatMapMany(Flux::fromIterable);
+    }
+    
+    /**
+     * Obtiene commits sin cache - directamente desde GitHub.
+     * Útil para casos donde se necesita información actualizada.
+     */
+    public Flux<Commit> getCommitsNoCache(String owner, String repo, java.security.Principal principal) {
+        return githubService.getCommits(owner, repo, principal);
+    }
+    
+    /**
+     * Limpia el cache de commits para un repositorio específico.
+     */
+    public void clearCache(String owner, String repo) {
+        String repoKey = owner + "/" + repo;
+        repoCacheRepository.deleteById(repoKey);
+        log.info("Cache limpiado para repositorio: {}/{}", owner, repo);
     }
 } 

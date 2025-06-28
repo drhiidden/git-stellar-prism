@@ -6,6 +6,7 @@ import com.drhdn.ghvis.model.PullRequest;
 import com.drhdn.ghvis.model.Repository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
@@ -13,57 +14,130 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.security.Principal;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import static org.springframework.security.oauth2.client.web.reactive.function.client.ServerOAuth2AuthorizedClientExchangeFilterFunction.clientRegistrationId;
 
 /**
- * Servicio para interactuar con la API de GitHub.
+ * Servicio profesional para interactuar con la API de GitHub.
+ * 
+ * 🔒 POLÍTICA DE SEGURIDAD ESTRICTA:
+ * - SOLO operaciones de LECTURA (GET requests)
+ * - NUNCA operaciones de escritura/eliminación
+ * - Scope 'repo' usado ÚNICAMENTE para acceso a repositorios privados
+ * - PROHIBIDO: POST, PUT, DELETE, PATCH requests
+ * 
+ * Esta implementación utiliza OAuth2 para autenticación automática
+ * y sigue las mejores prácticas de Spring WebFlux.
  */
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class GithubService {
 
-    private final WebClient webClient;
+    @Qualifier("githubWebClient")
+    private final WebClient githubWebClient;
+    
+    @Qualifier("webClient")
+    private final WebClient publicWebClient;
     
     @Value("${github.api.token:}")
-    private String githubToken;
-    
-    private static final String GITHUB_API_URL = "https://api.github.com";
+    private String fallbackGithubToken;
     
     /**
-     * Obtiene información de un repositorio.
+     * 🔒 SALVAGUARDA DE SEGURIDAD: Valida que solo se realicen operaciones de lectura.
+     * 
+     * Este método está diseñado para prevenir accidentalmente operaciones peligrosas.
+     * NUNCA debe ser modificado para permitir operaciones de escritura.
+     * 
+     * @param operation Nombre de la operación a validar
+     * @throws SecurityException Si la operación no está en la lista de operaciones seguras
+     */
+    private void validateReadOnlyOperation(String operation) {
+        // Lista blanca de operaciones permitidas (SOLO LECTURA)
+        Set<String> allowedOperations = Set.of(
+            "getRepository", "getRepositoryPublic", "getCommits", 
+            "getPullRequests", "getIssues", "getLanguages",
+            "getCommitDetail", "getPullRequestDetail", "getIssueDetail",
+            "getUserRepositories", "hasRepositoryAccess"
+        );
+        
+        if (!allowedOperations.contains(operation)) {
+            String errorMsg = String.format(
+                "OPERACIÓN BLOQUEADA: '%s' no está en la lista de operaciones seguras. " +
+                "Solo se permiten operaciones de lectura.", operation
+            );
+            log.error("🚨 INTENTO DE OPERACIÓN PELIGROSA: {}", errorMsg);
+            throw new SecurityException(errorMsg);
+        }
+        
+        log.debug("✅ Operación segura validada: {}", operation);
+    }
+    
+    /**
+     * Obtiene información de un repositorio usando OAuth2 automático.
+     * 🔒 OPERACIÓN SEGURA: Solo lectura, incluye repositorios privados
+     * 
+     * @param owner Propietario del repositorio
+     * @param repo Nombre del repositorio
+     * @param principal Principal del usuario autenticado (opcional)
+     * @return Mono con la información del repositorio
+     */
+    public Mono<Repository> getRepository(String owner, String repo, Principal principal) {
+        validateReadOnlyOperation("getRepository"); // 🔒 Salvaguarda de seguridad
+        return githubWebClient.get()
+                .uri("/repos/{owner}/{repo}", owner, repo)
+                .attributes(clientRegistrationId("github"))
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(this::mapToRepository)
+                .doOnSuccess(repository -> log.debug("Repositorio obtenido: {}/{}", owner, repo))
+                .doOnError(e -> log.error("Error al obtener el repositorio {}/{}: {}", owner, repo, e.getMessage()));
+    }
+    
+    /**
+     * Obtiene información de un repositorio sin autenticación (API pública).
      * 
      * @param owner Propietario del repositorio
      * @param repo Nombre del repositorio
      * @return Mono con la información del repositorio
      */
-    public Mono<Repository> getRepository(String owner, String repo) {
-        return webClient.get()
-                .uri(GITHUB_API_URL + "/repos/{owner}/{repo}", owner, repo)
-                .headers(this::setAuthHeader)
+    public Mono<Repository> getRepositoryPublic(String owner, String repo) {
+        return publicWebClient.get()
+                .uri("https://api.github.com/repos/{owner}/{repo}", owner, repo)
+                .headers(this::setFallbackAuthHeader)
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(this::mapToRepository)
-                .doOnError(e -> log.error("Error al obtener el repositorio {}/{}: {}", owner, repo, e.getMessage()));
+                .doOnSuccess(repository -> log.debug("Repositorio público obtenido: {}/{}", owner, repo))
+                .doOnError(e -> log.error("Error al obtener el repositorio público {}/{}: {}", owner, repo, e.getMessage()));
     }
     
     /**
-     * Obtiene los commits de un repositorio.
+     * Obtiene los commits de un repositorio usando OAuth2.
      * 
      * @param owner Propietario del repositorio
      * @param repo Nombre del repositorio
+     * @param principal Principal del usuario autenticado
      * @return Flux de commits
      */
-    public Flux<Commit> getCommits(String owner, String repo) {
-        return webClient.get()
-                .uri(GITHUB_API_URL + "/repos/{owner}/{repo}/commits", owner, repo)
-                .headers(this::setAuthHeader)
+    public Flux<Commit> getCommits(String owner, String repo, Principal principal) {
+        return githubWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/repos/{owner}/{repo}/commits")
+                        .queryParam("per_page", 100)
+                        .build(owner, repo))
+                .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToFlux(Map.class)
                 .map(this::mapToCommit)
+                .doOnSubscribe(subscription -> 
+                    log.debug("Obteniendo commits para repositorio: {}/{}", owner, repo))
                 .doOnError(e -> log.error("Error al obtener los commits de {}/{}: {}", owner, repo, e.getMessage()));
     }
     
@@ -72,19 +146,22 @@ public class GithubService {
      * 
      * @param owner Propietario del repositorio
      * @param repo Nombre del repositorio
-     * @param state Estado de los PRs (open, closed, all)
+     * @param principal Principal del usuario autenticado
      * @return Flux de pull requests
      */
-    public Flux<PullRequest> getPullRequests(String owner, String repo, String state) {
-        return webClient.get()
+    public Flux<PullRequest> getPullRequests(String owner, String repo, Principal principal) {
+        return githubWebClient.get()
                 .uri(uriBuilder -> uriBuilder
-                        .path(GITHUB_API_URL + "/repos/{owner}/{repo}/pulls")
-                        .queryParam("state", state)
+                        .path("/repos/{owner}/{repo}/pulls")
+                        .queryParam("state", "all")
+                        .queryParam("per_page", 100)
                         .build(owner, repo))
-                .headers(this::setAuthHeader)
+                .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToFlux(Map.class)
                 .map(this::mapToPullRequest)
+                .doOnSubscribe(subscription -> 
+                    log.debug("Obteniendo pull requests para repositorio: {}/{}", owner, repo))
                 .doOnError(e -> log.error("Error al obtener los PRs de {}/{}: {}", owner, repo, e.getMessage()));
     }
     
@@ -93,20 +170,23 @@ public class GithubService {
      * 
      * @param owner Propietario del repositorio
      * @param repo Nombre del repositorio
-     * @param state Estado de los issues (open, closed, all)
+     * @param principal Principal del usuario autenticado
      * @return Flux de issues
      */
-    public Flux<Issue> getIssues(String owner, String repo, String state) {
-        return webClient.get()
+    public Flux<Issue> getIssues(String owner, String repo, Principal principal) {
+        return githubWebClient.get()
                 .uri(uriBuilder -> uriBuilder
-                        .path(GITHUB_API_URL + "/repos/{owner}/{repo}/issues")
-                        .queryParam("state", state)
+                        .path("/repos/{owner}/{repo}/issues")
+                        .queryParam("state", "all")
+                        .queryParam("per_page", 100)
                         .build(owner, repo))
-                .headers(this::setAuthHeader)
+                .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToFlux(Map.class)
                 .filter(map -> !map.containsKey("pull_request")) // Filtrar PRs que también aparecen como issues
                 .map(this::mapToIssue)
+                .doOnSubscribe(subscription -> 
+                    log.debug("Obteniendo issues para repositorio: {}/{}", owner, repo))
                 .doOnError(e -> log.error("Error al obtener los issues de {}/{}: {}", owner, repo, e.getMessage()));
     }
     
@@ -115,12 +195,13 @@ public class GithubService {
      * 
      * @param owner Propietario del repositorio
      * @param repo Nombre del repositorio
+     * @param principal Principal del usuario autenticado
      * @return Mono con mapa de lenguajes y bytes
      */
-    public Mono<Map<String, Long>> getLanguages(String owner, String repo) {
-        return webClient.get()
-                .uri(GITHUB_API_URL + "/repos/{owner}/{repo}/languages", owner, repo)
-                .headers(this::setAuthHeader)
+    public Mono<Map<String, Long>> getLanguages(String owner, String repo, Principal principal) {
+        return githubWebClient.get()
+                .uri("/repos/{owner}/{repo}/languages", owner, repo)
+                .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .cast(Map.class)
@@ -134,10 +215,9 @@ public class GithubService {
                     });
                     return result;
                 })
-                .doOnError(e -> {
-                    log.error("Error al obtener los lenguajes de {}/{}: {}", owner, repo, e.getMessage());
-                    return Mono.just(Collections.emptyMap());
-                });
+                .doOnSuccess(languages -> log.debug("Lenguajes obtenidos para {}/{}: {}", owner, repo, languages.keySet()))
+                .doOnError(e -> log.error("Error al obtener los lenguajes de {}/{}: {}", owner, repo, e.getMessage()))
+                .onErrorResume(e -> Mono.just(Collections.emptyMap()));
     }
     
     /**
@@ -146,53 +226,102 @@ public class GithubService {
      * @param owner Propietario del repositorio
      * @param repo Nombre del repositorio
      * @param sha Hash del commit
+     * @param principal Principal del usuario autenticado
      * @return Mono con el commit
      */
-    public Mono<Commit> getCommitDetail(String owner, String repo, String sha) {
-        return webClient.get()
-                .uri(GITHUB_API_URL + "/repos/{owner}/{repo}/commits/{sha}", owner, repo, sha)
-                .headers(this::setAuthHeader)
+    public Mono<Commit> getCommitDetail(String owner, String repo, String sha, Principal principal) {
+        return githubWebClient.get()
+                .uri("/repos/{owner}/{repo}/commits/{sha}", owner, repo, sha)
+                .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(this::mapToDetailedCommit)
+                .doOnSuccess(commit -> log.debug("Detalles del commit {} obtenidos", sha))
                 .doOnError(e -> log.error("Error al obtener detalles del commit {}: {}", sha, e.getMessage()));
     }
     
     /**
      * Obtiene detalles de un Pull Request específico.
      */
-    public Mono<PullRequest> getPullRequestDetail(String owner, String repo, int number) {
-        return webClient.get()
-                .uri(GITHUB_API_URL + "/repos/{owner}/{repo}/pulls/{number}", owner, repo, number)
-                .headers(this::setAuthHeader)
+    public Mono<PullRequest> getPullRequestDetail(String owner, String repo, int number, Principal principal) {
+        return githubWebClient.get()
+                .uri("/repos/{owner}/{repo}/pulls/{number}", owner, repo, number)
+                .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(this::mapToPullRequest)
+                .doOnSuccess(pr -> log.debug("Detalles del PR #{} obtenidos", number))
                 .doOnError(e -> log.error("Error al obtener PR #{} en {}/{}: {}", number, owner, repo, e.getMessage()));
     }
 
     /**
      * Obtiene detalles de un Issue específico.
      */
-    public Mono<Issue> getIssueDetail(String owner, String repo, int number) {
-        return webClient.get()
-                .uri(GITHUB_API_URL + "/repos/{owner}/{repo}/issues/{number}", owner, repo, number)
-                .headers(this::setAuthHeader)
+    public Mono<Issue> getIssueDetail(String owner, String repo, int number, Principal principal) {
+        return githubWebClient.get()
+                .uri("/repos/{owner}/{repo}/issues/{number}", owner, repo, number)
+                .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(this::mapToIssue)
+                .doOnSuccess(issue -> log.debug("Detalles del Issue #{} obtenidos", number))
                 .doOnError(e -> log.error("Error al obtener Issue #{} en {}/{}: {}", number, owner, repo, e.getMessage()));
     }
     
     /**
-     * Configura las cabeceras de autenticación si hay un token disponible.
+     * Establece el header de autorización con el token de fallback.
+     * Solo se usa para APIs públicas cuando no hay OAuth2 disponible.
      * 
-     * @param headers Cabeceras HTTP
+     * @param headers Headers HTTP
      */
-    private void setAuthHeader(HttpHeaders headers) {
-        if (githubToken != null && !githubToken.isEmpty()) {
-            headers.setBearerAuth(githubToken);
+    private void setFallbackAuthHeader(HttpHeaders headers) {
+        if (fallbackGithubToken != null && !fallbackGithubToken.isEmpty()) {
+            headers.setBearerAuth(fallbackGithubToken);
+            log.debug("Usando token de fallback para autenticación");
         }
+    }
+    
+    /**
+     * Obtiene los repositorios del usuario autenticado.
+     * 🔒 OPERACIÓN SEGURA: Solo lectura, incluye repositorios privados
+     * 
+     * @param principal Principal del usuario autenticado
+     * @return Flux de repositorios del usuario
+     */
+    public Flux<Repository> getUserRepositories(Principal principal) {
+        validateReadOnlyOperation("getUserRepositories"); // 🔒 Salvaguarda de seguridad
+        return githubWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path("/user/repos")
+                        .queryParam("visibility", "all")
+                        .queryParam("sort", "updated")
+                        .queryParam("per_page", 100)
+                        .build())
+                .attributes(clientRegistrationId("github"))
+                .retrieve()
+                .bodyToFlux(Map.class)
+                .map(this::mapToRepository)
+                .doOnSubscribe(subscription -> 
+                    log.debug("Obteniendo repositorios del usuario autenticado"))
+                .doOnError(e -> log.error("Error al obtener repositorios del usuario: {}", e.getMessage()));
+    }
+    
+    /**
+     * Verifica si el usuario tiene acceso a un repositorio específico.
+     * 
+     * @param owner Propietario del repositorio
+     * @param repo Nombre del repositorio
+     * @param principal Principal del usuario autenticado
+     * @return Mono<Boolean> indicando si tiene acceso
+     */
+    public Mono<Boolean> hasRepositoryAccess(String owner, String repo, Principal principal) {
+        return getRepository(owner, repo, principal)
+                .map(repository -> true)
+                .onErrorReturn(false)
+                .doOnNext(hasAccess -> 
+                    log.debug("Usuario {} acceso a {}/{}: {}", 
+                        principal != null ? principal.getName() : "anónimo", 
+                        owner, repo, hasAccess));
     }
     
     /**

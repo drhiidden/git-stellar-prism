@@ -134,6 +134,11 @@ function onMouseClick(event) {
         const object = intersects[0].object;
         if (object.userData && object.userData.type) {
             showElementInfo(object.userData);
+            
+            // Sincronizar con timeline si es un commit
+            if (object.userData.hash && typeof highlightCommitInTimeline === 'function') {
+                highlightCommitInTimeline(object.userData.hash);
+            }
         }
     }
 }
@@ -362,6 +367,11 @@ function renderCommits(commits) {
     
     // Actualizar filtros
     updateFilters(commits);
+    
+    // Renderizar timeline
+    if (typeof renderTimeline === 'function') {
+        renderTimeline(commits);
+    }
 }
 
 /**
@@ -400,8 +410,51 @@ function applyFilters() {
     const authorFilter = document.getElementById('authorFilter').value;
     const branchFilter = document.getElementById('branchFilter').value;
     const eventTypeFilter = document.getElementById('eventTypeFilter').value;
+    const dateFromFilter = document.getElementById('dateFromFilter').value;
+    const dateToFilter = document.getElementById('dateToFilter').value;
     
-    // Filtrar nodos
+    // Convertir fechas si están definidas
+    const fromDate = dateFromFilter ? new Date(dateFromFilter) : null;
+    const toDate = dateToFilter ? new Date(dateToFilter + 'T23:59:59') : null;
+    
+    // Filtrar commits para el timeline
+    let filteredCommits = commits.slice();
+    
+    if (authorFilter || branchFilter || eventTypeFilter || fromDate || toDate) {
+        filteredCommits = commits.filter(commit => {
+            let include = true;
+            
+            // Filtrar por tipo
+            if (eventTypeFilter && commit.type !== eventTypeFilter) {
+                include = false;
+            }
+            
+            // Filtrar por autor
+            if (authorFilter && commit.author !== authorFilter) {
+                include = false;
+            }
+            
+            // Filtrar por rama
+            if (branchFilter && commit.branch !== branchFilter) {
+                include = false;
+            }
+            
+            // Filtrar por fecha
+            if (fromDate || toDate) {
+                const commitDate = new Date(commit.timestamp);
+                if (fromDate && commitDate < fromDate) {
+                    include = false;
+                }
+                if (toDate && commitDate > toDate) {
+                    include = false;
+                }
+            }
+            
+            return include;
+        });
+    }
+    
+    // Aplicar filtros a la visualización 3D
     for (const node of nodes) {
         const data = node.userData;
         let visible = true;
@@ -421,8 +474,45 @@ function applyFilters() {
             visible = false;
         }
         
+        // Filtrar por fecha
+        if (fromDate || toDate) {
+            const nodeDate = new Date(data.timestamp);
+            if (fromDate && nodeDate < fromDate) {
+                visible = false;
+            }
+            if (toDate && nodeDate > toDate) {
+                visible = false;
+            }
+        }
+        
         // Aplicar visibilidad
         node.visible = visible;
+    }
+    
+    // Actualizar timeline con commits filtrados
+    if (typeof renderTimeline === 'function') {
+        renderTimeline(filteredCommits);
+    }
+}
+
+/**
+ * Limpia todos los filtros
+ */
+function clearFilters() {
+    document.getElementById('authorFilter').value = '';
+    document.getElementById('branchFilter').value = '';
+    document.getElementById('eventTypeFilter').value = '';
+    document.getElementById('dateFromFilter').value = '';
+    document.getElementById('dateToFilter').value = '';
+    
+    // Mostrar todos los nodos
+    for (const node of nodes) {
+        node.visible = true;
+    }
+    
+    // Restaurar timeline completo
+    if (typeof renderTimeline === 'function') {
+        renderTimeline(commits);
     }
 }
 
@@ -443,6 +533,30 @@ function animate() {
 }
 
 /**
+ * Resalta un commit específico en la visualización 3D
+ */
+function highlightCommitIn3D(commitHash) {
+    // Restaurar todos los nodos a su estado normal
+    nodes.forEach(node => {
+        node.material.emissive.setHex(0x000000);
+        node.scale.set(1, 1, 1);
+    });
+    
+    // Buscar y resaltar el commit específico
+    const targetNode = nodes.find(node => node.userData.hash === commitHash);
+    if (targetNode) {
+        targetNode.material.emissive.setHex(0x444444);
+        targetNode.scale.set(1.5, 1.5, 1.5);
+        
+        // Mover la cámara hacia el commit
+        const targetPosition = targetNode.position.clone();
+        camera.position.copy(targetPosition);
+        camera.position.z += 50;
+        camera.lookAt(targetPosition);
+    }
+}
+
+/**
  * Inicialización cuando el DOM está cargado
  */
 document.addEventListener('DOMContentLoaded', () => {
@@ -454,6 +568,11 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Inicializar visualización
     initVisualization();
+    
+    // Inicializar timeline
+    if (typeof initTimeline === 'function') {
+        initTimeline();
+    }
     
     // Manejar envío del formulario
     const repoForm = document.getElementById('repoForm');
@@ -478,6 +597,25 @@ document.addEventListener('DOMContentLoaded', () => {
         controls.reset();
     });
     
-    // Manejar botón de filtros
+    // Manejar botones de filtros
     document.getElementById('applyFilters').addEventListener('click', applyFilters);
+    document.getElementById('clearFilters').addEventListener('click', clearFilters);
+    
+    // Manejar botones del timeline
+    document.getElementById('timeline-export').addEventListener('click', () => {
+        if (typeof exportTimelineData === 'function') {
+            exportTimelineData();
+        }
+    });
+    
+    document.getElementById('timeline-fullscreen').addEventListener('click', () => {
+        const timelineContainer = document.getElementById('timeline-container');
+        if (timelineContainer.requestFullscreen) {
+            timelineContainer.requestFullscreen();
+        } else if (timelineContainer.webkitRequestFullscreen) {
+            timelineContainer.webkitRequestFullscreen();
+        } else if (timelineContainer.msRequestFullscreen) {
+            timelineContainer.msRequestFullscreen();
+        }
+    });
 }); 

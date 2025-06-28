@@ -28,101 +28,202 @@ Este proyecto combina la visualización de datos con el análisis de código par
 
 ---
 
-## 🛠️ Stack Tecnológico
+## 🔐 Características de Seguridad
 
-El proyecto está construido sobre una arquitectura moderna y reactiva, utilizando las siguientes tecnologías:
+### Arquitectura de Seguridad Profesional
 
-| Capa      | Tecnología                                                              | Propósito                                             |
-|-----------|-------------------------------------------------------------------------|-------------------------------------------------------|
-| **Backend** | [**Spring Boot 3**](https://spring.io/projects/spring-boot) con [**WebFlux**](https://docs.spring.io/spring-framework/reference/web/webflux.html) | Servidor reactivo de alto rendimiento y bajo consumo.   |
-| **Frontend**| [**Thymeleaf**](https://www.thymeleaf.org/)                             | Motor de plantillas para renderizar el HTML inicial.  |
-|           | [**Three.js**](https://threejs.org/)                                    | Librería 3D para la visualización generativa.         |
-|           | [**Chart.js**](https://www.chartjs.org/)                                | Creación de gráficos para el análisis de tecnologías. |
-|           | [**Bootstrap 5**](https://getbootstrap.com/)                            | Framework CSS para una interfaz de usuario moderna.   |
-| **Comunicación**| **Server-Sent Events (SSE)**                                            | Para la transmisión de eventos en tiempo real.        |
-| **Base de Datos**| [**H2 Database**](https://www.h2database.com/html/main.html)      | Base de datos en memoria para almacenamiento temporal.|
-| **Build**   | [**Maven**](https://maven.apache.org/)                                  | Gestión de dependencias y construcción del proyecto.  |
+Esta aplicación implementa las mejores prácticas de seguridad siguiendo la documentación oficial de Spring Security WebFlux:
 
----
+#### 🛡️ OAuth2 Integration
+- **Autenticación OAuth2 con GitHub**: Configuración completa siguiendo el patrón Authorization Code Grant
+- **Manejo Automático de Tokens**: Gestión automática de refresh tokens y expiración
+- **Alcance de Permisos**: Configurado con permisos mínimos necesarios (`repo`, `user:email`, `read:user`, `read:org`)
 
-## 🚀 Cómo Empezar
+#### 🌐 WebClient Integration
+- **WebClient con OAuth2**: Configuración profesional con filtros de autenticación automática
+- **Múltiples Clientes**: 
+  - `githubWebClient`: Para llamadas autenticadas a GitHub API
+  - `webClient`: Para uso general
+  - `oAuth2WebClient`: Para otras APIs que requieran OAuth2
+- **Manejo de Errores**: Sistema centralizado de manejo de errores con rate limiting y retry logic
 
-Sigue estos pasos para poner en marcha el proyecto en tu entorno local.
+#### 🔒 Security Configuration
+- **CSRF Protection**: Configuración granular que protege formularios pero permite APIs REST
+- **Headers de Seguridad**: HSTS, X-Content-Type-Options, y Frame-Options configurados
+- **Autorización por Rutas**: Control granular de acceso a diferentes endpoints
+- **Session Management**: Configuración optimizada para aplicaciones reactivas
+
+#### ⚡ Performance & Reliability
+- **Connection Pooling**: Configuración optimizada de timeouts y pools de conexión
+- **Memory Management**: Límites configurables para responses grandes (2MB por defecto)
+- **Logging Estructurado**: Logs de debug y error con información útil para monitoring
+
+## 🏗️ Arquitectura de Beans
+
+### Separación de Responsabilidades
+
+La aplicación sigue una arquitectura limpia con separación clara de responsabilidades:
+
+```
+SecurityConfig
+├── ReactiveOAuth2AuthorizedClientManager
+├── WebClient Beans (githubWebClient, oAuth2WebClient, webClient)
+├── Authentication Handlers (success/failure)
+└── CSRF & Headers Configuration
+
+WebClientConfig
+├── Timeout Configuration
+├── Connection Management
+└── OAuth2 Integration
+
+OAuth2ErrorConfig
+├── Centralized Error Handling
+├── Rate Limiting Management
+└── Structured Logging
+```
+
+### Bean Management Best Practices
+
+1. **@Qualifier Usage**: Diferenciación clara entre diferentes tipos de WebClient
+2. **Configuration Properties**: Externalized configuration con valores por defecto sensatos
+3. **Conditional Beans**: Configuración que se adapta al entorno (desarrollo/producción)
+4. **Error Boundaries**: Manejo centralizado de errores con fallbacks apropiados
+
+## 🚀 Configuración
+
+### Variables de Entorno Requeridas
+
+```bash
+# OAuth2 Configuration
+GITHUB_CLIENT_ID=your_github_client_id
+GITHUB_CLIENT_SECRET=your_github_client_secret
+
+# Optional: Fallback token for public APIs
+GITHUB_API_TOKEN=your_github_token
+```
+
+### Propiedades de Configuración
+
+```properties
+# Security Configuration
+app.security.success-url=/
+app.security.logout-success-url=/
+
+# WebClient Timeouts (milliseconds)
+app.webclient.timeout.connection=10000
+app.webclient.timeout.read=30000
+app.webclient.timeout.write=30000
+app.webclient.max-memory-size=2097152
+
+# OAuth2 GitHub Configuration
+spring.security.oauth2.client.registration.github.scope=repo,user:email,read:user,read:org
+```
+
+## 🔧 Componentes Principales
+
+### SecurityConfig
+Configuración principal de seguridad que incluye:
+- OAuth2 authorization code flow
+- CSRF protection granular
+- Security headers optimization
+- Route-based authorization
+
+### WebClientConfig
+Configuración de clientes HTTP con:
+- OAuth2 automatic token injection
+- Connection pooling optimization
+- Error handling and retry logic
+- Performance monitoring
+
+### GithubService
+Servicio optimizado para GitHub API con:
+- Automatic OAuth2 authentication
+- Rate limit handling
+- Error recovery mechanisms
+- Structured response mapping
+
+## 🛠️ Instalación y Ejecución
 
 ### Prerrequisitos
+- Java 21+
+- Maven 3.9+
+- Aplicación OAuth2 registrada en GitHub
 
-- **JDK 21** o superior.
-- **Maven 3.8** o superior.
-- Un token de acceso personal de GitHub con permisos de `repo` (si quieres analizar repositorios privados).
+### Pasos de Instalación
 
-### Instalación y Ejecución
-
-1.  **Clona el repositorio:**
-    ```bash
-    git clone https://github.com/tu-usuario/ghvis.git
-    cd ghvis
-    ```
-
-2.  **(Opcional) Configura tu token de GitHub:**
-    Abre el archivo `src/main/resources/application.properties` y añade la siguiente línea con tu token:
-    ```properties
-    github.api.token=ghp_XXXXXXXXXXXXXXXXXXXX
-    ```
-
-3.  **Construye el proyecto con Maven:**
-    ```bash
-    mvn clean install
-    ```
-
-4.  **Ejecuta la aplicación:**
-    ```bash
-    mvn spring-boot:run
-    ```
-
-5.  **Abre tu navegador:**
-    Accede a `http://localhost:8080` para ver la aplicación en funcionamiento.
-
----
-
-## 🏗️ Estructura del Proyecto
-
-La estructura sigue las convenciones de un proyecto Spring Boot estándar, separando claramente las responsabilidades:
-
-```
-/src
- ├── /main
- │   ├── /java/com/drhdn/ghvis/
- │   │    ├── controller/  # Endpoints REST y Web
- │   │    ├── service/     # Lógica de negocio
- │   │    ├── model/       # Entidades de datos
- │   │    ├── config/      # Configuración de la aplicación
- │   │    └── util/        # Clases de utilidad
- │   └── /resources/
- │        ├── /templates/  # Plantillas Thymeleaf (HTML)
- │        ├── /static/     # Archivos estáticos (CSS, JS)
- │        └── application.properties
- └── /test
-      └── ...
+1. **Clonar el repositorio**
+```bash
+git clone <repository-url>
+cd ghvis
 ```
 
----
+2. **Configurar OAuth2 en GitHub**
+   - Ir a GitHub Settings > Developer settings > OAuth Apps
+   - Crear nueva OAuth App
+   - Authorization callback URL: `http://localhost:8080/login/oauth2/code/github`
 
-## 🗺️ Roadmap y Futuras Mejoras
+3. **Configurar variables de entorno**
+```bash
+export GITHUB_CLIENT_ID=your_client_id
+export GITHUB_CLIENT_SECRET=your_client_secret
+```
 
-- [ ] **Integración con GitLab y Bitbucket.**
-- [ ] **Análisis de calidad de código más profundo** (complejidad ciclomática, duplicación de código).
-- [ ] **Integración con un LLM (Modelo de Lenguaje Grande)** para generar descripciones de proyectos más ricas y sugerir mejoras.
-- [ ] **Más opciones de personalización visual** (temas, colores, formas de nodos).
-- [ ] **Sincronización con audio** para una experiencia audiovisual completa.
+4. **Ejecutar la aplicación**
+```bash
+./mvnw spring-boot:run
+```
 
----
+5. **Acceder a la aplicación**
+   - Navegador: `http://localhost:8080`
+   - Console H2 (desarrollo): `http://localhost:8080/h2-console`
 
-## 🤝 Contribuciones
+## 📊 Monitoring y Observabilidad
 
-Las contribuciones son bienvenidas. Si tienes ideas para mejorar el proyecto, por favor, abre un *issue* para discutirlo o envía un *pull request* directamente.
+### Endpoints de Actuator
+- `/actuator/health`: Estado de la aplicación
+- `/actuator/info`: Información de la aplicación
+- `/actuator/metrics`: Métricas de performance
 
----
+### Logging Configuration
+- Debug level para OAuth2 y security components
+- Structured logging para análisis
+- Performance monitoring para WebClient calls
+
+## 🔍 Debugging y Troubleshooting
+
+### Common Issues
+
+1. **401 Unauthorized**: Verificar configuración OAuth2 y tokens
+2. **Rate Limit Exceeded**: GitHub API tiene límites, considerar caché
+3. **CORS Issues**: Verificar configuración de headers y origins
+
+### Debug Configuration
+```properties
+logging.level.org.springframework.security=DEBUG
+logging.level.org.springframework.web.reactive.function.client=DEBUG
+logging.level.com.drhdn.ghvis=DEBUG
+```
+
+## 📚 Referencias
+
+- [Spring Security WebFlux Documentation](https://docs.spring.io/spring-security/reference/reactive/oauth2/index.html)
+- [Spring WebFlux Reference](https://docs.spring.io/spring-framework/docs/current/reference/html/web-reactive.html)
+- [GitHub OAuth2 Documentation](https://docs.github.com/en/developers/apps/building-oauth-apps)
+
+## 🤝 Contribución
+
+Este proyecto sigue las mejores prácticas de desarrollo con Spring Boot. Para contribuir:
+
+1. Fork del repositorio
+2. Crear feature branch
+3. Seguir convenciones de código establecidas
+4. Añadir tests apropiados
+5. Crear Pull Request
 
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia MIT. Consulta el archivo `LICENSE` para más detalles. 
+
+---
+
+**Nota**: Esta aplicación ha sido diseñada siguiendo las mejores prácticas de seguridad y arquitectura de Spring Boot WebFlux. Toda la configuración de seguridad está optimizada para entornos de producción con fallbacks apropiados para desarrollo. 
