@@ -131,14 +131,31 @@ function initVisualization() {
     createBackgroundGrid();
 
     // Controles de órbita mejorados
-    controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.enableZoom = true;
-    controls.enablePan = true;
-    controls.maxPolarAngle = Math.PI;
-    controls.minDistance = 20;
-    controls.maxDistance = 500;
+    try {
+        if (typeof THREE.OrbitControls !== 'undefined') {
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.enableZoom = true;
+            controls.enablePan = true;
+            controls.maxPolarAngle = Math.PI;
+            controls.minDistance = 20;
+            controls.maxDistance = 500;
+            console.log('✅ OrbitControls configurados correctamente');
+        } else {
+            console.warn('⚠️ THREE.OrbitControls no está disponible - controles de mouse deshabilitados');
+            // Crear controles básicos manuales si OrbitControls no está disponible
+            renderer.domElement.addEventListener('wheel', (event) => {
+                event.preventDefault();
+                const delta = event.deltaY;
+                camera.position.z += delta * 0.1;
+                camera.position.z = Math.max(10, Math.min(500, camera.position.z));
+            });
+        }
+    } catch (error) {
+        console.error('❌ Error configurando OrbitControls:', error);
+        console.log('💡 Usando controles básicos de fallback');
+    }
 
     // Raycaster para interacción
     raycaster = new THREE.Raycaster();
@@ -800,14 +817,16 @@ function clearFilters() {
 function animate() {
     requestAnimationFrame(animate);
     
-    // Verificar que los componentes existen
-    if (!scene || !camera || !renderer || !controls) {
-        console.warn('⚠️ Componentes de Three.js no disponibles en animate()');
+    // Verificar que los componentes básicos existen
+    if (!scene || !camera || !renderer) {
+        console.warn('⚠️ Componentes básicos de Three.js no disponibles en animate()');
         return;
     }
     
-    // Actualizar controles
-    controls.update();
+    // Actualizar controles si están disponibles
+    if (controls && controls.update) {
+        controls.update();
+    }
     
     // Rotar ligeramente la escena para efecto de movimiento (opcional)
     // scene.rotation.y += config.animationSpeed;
@@ -818,6 +837,11 @@ function animate() {
     // Log periódico para debugging (cada 5 segundos aprox)
     if (Math.random() < 0.001) {
         console.log(`🎬 Animando: ${scene.children.length} objetos en escena, ${nodes.length} nodos`);
+        if (controls) {
+            console.log(`🎮 Controls activos, cámara en (${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)})`);
+        } else {
+            console.log('🎮 Controls no disponibles - usando controles básicos');
+        }
     }
 }
 
@@ -918,20 +942,40 @@ document.addEventListener('DOMContentLoaded', () => {
         loadCommits(repoUrl);
     });
     
-    // Manejar botones de zoom
-    document.getElementById('btnZoomIn').addEventListener('click', () => {
-        camera.position.z *= 0.8;
-    });
+    // Manejar botones de zoom con verificación de existencia
+    const btnZoomIn = document.getElementById('btnZoomIn');
+    if (btnZoomIn) {
+        btnZoomIn.addEventListener('click', () => {
+            if (camera) {
+                camera.position.z *= 0.8;
+                console.log('🔍 Zoom In (botón regular)');
+            }
+        });
+    }
     
-    document.getElementById('btnZoomOut').addEventListener('click', () => {
-        camera.position.z *= 1.2;
-    });
+    const btnZoomOut = document.getElementById('btnZoomOut');
+    if (btnZoomOut) {
+        btnZoomOut.addEventListener('click', () => {
+            if (camera) {
+                camera.position.z *= 1.2;
+                console.log('🔍 Zoom Out (botón regular)');
+            }
+        });
+    }
     
-    document.getElementById('btnReset').addEventListener('click', () => {
-        camera.position.set(0, 0, 100);
-        camera.lookAt(0, 0, 0);
-        controls.reset();
-    });
+    const btnReset = document.getElementById('btnReset');
+    if (btnReset) {
+        btnReset.addEventListener('click', () => {
+            if (camera) {
+                camera.position.set(0, 0, 100);
+                camera.lookAt(0, 0, 0);
+                if (controls && controls.reset) {
+                    controls.reset();
+                }
+                console.log('🏠 Reset View (botón regular)');
+            }
+        });
+    }
     
     // Botón de nodos de prueba para debugging
     document.getElementById('btnDebugNodes').addEventListener('click', () => {
@@ -966,27 +1010,142 @@ document.addEventListener('DOMContentLoaded', () => {
         createTestNodes();
     });
     
-    // Manejar botones de filtros
-    document.getElementById('applyFilters').addEventListener('click', applyFilters);
-    document.getElementById('clearFilters').addEventListener('click', clearFilters);
+    // Botón de test del timeline
+    const btnTestTimeline = document.getElementById('btnTestTimeline');
+    if (btnTestTimeline) {
+        btnTestTimeline.addEventListener('click', () => {
+            console.log('🕐 Botón Test Timeline presionado');
+            
+            // Verificar estado del timeline
+            console.log('🔍 DIAGNÓSTICO TIMELINE:');
+            console.log(`- D3: ${typeof d3 !== 'undefined' ? 'OK' : 'NULL'}`);
+            console.log(`- initTimeline función: ${typeof initTimeline === 'function' ? 'OK' : 'NULL'}`);
+            console.log(`- renderTimeline función: ${typeof renderTimeline === 'function' ? 'OK' : 'NULL'}`);
+            
+            const timelineContainer = document.getElementById('timeline-container');
+            if (timelineContainer) {
+                console.log(`- Timeline container: OK (${timelineContainer.children.length} elementos)`);
+            } else {
+                console.log('- Timeline container: NULL');
+            }
+            
+            // Crear datos de prueba para el timeline
+            if (typeof renderTimeline === 'function') {
+                const testCommits = [
+                    {
+                        hash: 'abc123',
+                        message: 'Commit de prueba 1',
+                        author: 'Usuario Test',
+                        timestamp: new Date(Date.now() - 86400000).toISOString(), // 1 día atrás
+                        branch: 'main'
+                    },
+                    {
+                        hash: 'def456',
+                        message: 'Commit de prueba 2',
+                        author: 'Usuario Test',
+                        timestamp: new Date(Date.now() - 43200000).toISOString(), // 12 horas atrás
+                        branch: 'main'
+                    },
+                    {
+                        hash: 'ghi789',
+                        message: 'Commit de prueba 3',
+                        author: 'Usuario Test',
+                        timestamp: new Date().toISOString(), // Ahora
+                        branch: 'feature'
+                    }
+                ];
+                
+                console.log('📊 Creando timeline con datos de prueba...');
+                renderTimeline(testCommits);
+            } else {
+                console.warn('⚠️ Función renderTimeline no disponible');
+                showNotification('Timeline no disponible - D3.js requerido', 'warning');
+            }
+        });
+    }
+    
+    // Manejar botones de filtros con verificación de existencia
+    const btnApplyFilters = document.getElementById('applyFilters');
+    if (btnApplyFilters) {
+        btnApplyFilters.addEventListener('click', applyFilters);
+    }
+    
+    const btnClearFilters = document.getElementById('clearFilters');
+    if (btnClearFilters) {
+        btnClearFilters.addEventListener('click', clearFilters);
+    }
+    
+    // Manejar botones flotantes (que son los que están visibles)
+    document.getElementById('btnZoomInFloat').addEventListener('click', () => {
+        console.log('🔍 Zoom In');
+        if (camera) {
+            camera.position.z *= 0.8;
+            console.log(`Cámara zoom in: z=${camera.position.z.toFixed(2)}`);
+        }
+    });
+    
+    document.getElementById('btnZoomOutFloat').addEventListener('click', () => {
+        console.log('🔍 Zoom Out');
+        if (camera) {
+            camera.position.z *= 1.2;
+            console.log(`Cámara zoom out: z=${camera.position.z.toFixed(2)}`);
+        }
+    });
+    
+    document.getElementById('btnResetFloat').addEventListener('click', () => {
+        console.log('🏠 Reset View');
+        if (camera && controls) {
+            camera.position.set(50, 50, 100);
+            camera.lookAt(0, 0, 0);
+            controls.target.set(0, 0, 0);
+            controls.update();
+            console.log('Vista restablecida');
+        }
+    });
     
     // Manejar botones del timeline
-    document.getElementById('timeline-export').addEventListener('click', () => {
-        if (typeof exportTimelineData === 'function') {
-            exportTimelineData();
-        }
-    });
+    const timelineExport = document.getElementById('timeline-export');
+    const timelineFullscreen = document.getElementById('timeline-fullscreen');
     
-    document.getElementById('timeline-fullscreen').addEventListener('click', () => {
-        const timelineContainer = document.getElementById('timeline-container');
-        if (timelineContainer.requestFullscreen) {
-            timelineContainer.requestFullscreen();
-        } else if (timelineContainer.webkitRequestFullscreen) {
-            timelineContainer.webkitRequestFullscreen();
-        } else if (timelineContainer.msRequestFullscreen) {
-            timelineContainer.msRequestFullscreen();
-        }
-    });
+    if (timelineExport) {
+        timelineExport.addEventListener('click', () => {
+            console.log('📊 Exportar timeline');
+            if (typeof exportTimelineData === 'function') {
+                exportTimelineData();
+            } else {
+                console.warn('Función exportTimelineData no está disponible');
+                showNotification('Función de exportar no disponible aún', 'warning');
+            }
+        });
+    }
+    
+    if (timelineFullscreen) {
+        timelineFullscreen.addEventListener('click', () => {
+            console.log('🖥️ Pantalla completa timeline');
+            const timelineContainer = document.getElementById('timeline-container');
+            if (timelineContainer) {
+                if (timelineContainer.requestFullscreen) {
+                    timelineContainer.requestFullscreen();
+                } else if (timelineContainer.webkitRequestFullscreen) {
+                    timelineContainer.webkitRequestFullscreen();
+                } else if (timelineContainer.msRequestFullscreen) {
+                    timelineContainer.msRequestFullscreen();
+                } else {
+                    console.warn('Pantalla completa no soportada');
+                    showNotification('Pantalla completa no soportada', 'warning');
+                }
+            }
+        });
+    }
+    
+    // Inicializar timeline
+    console.log('🕐 Inicializando timeline...');
+    if (typeof initTimeline === 'function') {
+        initTimeline();
+        console.log('✅ Timeline inicializado');
+    } else {
+        console.warn('⚠️ Función initTimeline no disponible');
+    }
 });
 
 /**

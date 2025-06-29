@@ -309,6 +309,49 @@ public class GithubService {
                     log.debug("Obteniendo repositorios del usuario autenticado"))
                 .doOnError(e -> log.error("Error al obtener repositorios del usuario: {}", e.getMessage()));
     }
+
+    /**
+     * Obtiene los repositorios del usuario con información detallada incluyendo lenguajes.
+     * 🔒 OPERACIÓN SEGURA: Solo lectura, incluye repositorios privados
+     * 
+     * @param principal Principal del usuario autenticado
+     * @return Flux de repositorios del usuario con información extendida
+     */
+    public Flux<Repository> getUserRepositoriesWithDetails(Principal principal) {
+        validateReadOnlyOperation("getUserRepositories"); // 🔒 Salvaguarda de seguridad
+        return getUserRepositories(principal)
+                .flatMap(repo -> 
+                    getLanguages(repo.getOwner(), repo.getName(), principal)
+                        .defaultIfEmpty(Collections.emptyMap())
+                        .map(languages -> {
+                            // Crear una versión mejorada del repositorio con lenguajes
+                            Repository enhancedRepo = Repository.builder()
+                                .id(repo.getId())
+                                .name(repo.getName())
+                                .owner(repo.getOwner())
+                                .description(repo.getDescription())
+                                .url(repo.getUrl())
+                                .defaultBranch(repo.getDefaultBranch())
+                                .createdAt(repo.getCreatedAt())
+                                .updatedAt(repo.getUpdatedAt())
+                                .pushedAt(repo.getPushedAt())
+                                .stargazersCount(repo.getStargazersCount())
+                                .forksCount(repo.getForksCount())
+                                .watchersCount(repo.getWatchersCount())
+                                .openIssuesCount(repo.getOpenIssuesCount())
+                                .size(repo.getSize())
+                                .fork(repo.isFork())
+                                .isPrivate(repo.isPrivate())
+                                .archived(repo.isArchived())
+                                .languageDistribution(languages)
+                                .build();
+                            return enhancedRepo;
+                        })
+                        .onErrorReturn(repo) // Si falla la obtención de lenguajes, devolver repo básico
+                )
+                .doOnNext(repo -> log.debug("Repositorio con detalles obtenido: {}", repo.getName()))
+                .doOnError(e -> log.error("Error al obtener repositorios con detalles: {}", e.getMessage()));
+    }
     
     /**
      * Verifica si el usuario tiene acceso a un repositorio específico.

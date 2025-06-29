@@ -2,8 +2,10 @@ package com.drhdn.ghvis;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling // Para habilitar @Scheduled en UserRepositoryCacheService
 public class GhvisApplication {
 
     public static void main(String[] args) {

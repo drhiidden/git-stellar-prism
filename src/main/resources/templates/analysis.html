@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/header :: common-head ('Análisis de Repositorio')}">
+    <!-- Head común desde fragmento -->
+</head>
+<body>
+    <!-- Navegación usando fragmento -->
+    <div th:replace="~{fragments/header :: main-nav}"></div>
+
+    <!-- Contenido principal con Bootstrap Grid -->
+    <div class="container-fluid p-4">
+        <div class="row g-4">
+            
+            <!-- Panel de control lateral -->
+            <div class="col-xl-3 col-lg-4 col-md-12">
+                <!-- Sección de entrada de repositorio -->
+                <div class="card modern-card mb-4 fade-in">
+                    <div class="card-header modern-card-header">
+                        <h6 class="card-title mb-0 d-flex align-items-center">
+                            <i class="fas fa-search me-2"></i>
+                            Repositorio a Analizar
+                        </h6>
+                    </div>
+                    
+                    <div class="card-body">
+                        <form id="repoForm" class="d-flex flex-column gap-3">
+                            <div>
+                                <label for="repoUrl" class="form-label text-muted small mb-2">
+                                    Repositorio de GitHub
+                                </label>
+                                <input type="text" 
+                                       class="form-control modern-input" 
+                                       id="repoUrl" 
+                                       placeholder="owner/repository"
+                                       autocomplete="off"
+                                       required>
+                                <div class="form-text text-muted small">
+                                    Ej: microsoft/vscode, facebook/react
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100 modern-btn-primary">
+                                <i class="fas fa-rocket me-2"></i>
+                                <span>Visualizar</span>
+                            </button>
+                        </form>
+                        
+                        <!-- Botón para volver al dashboard -->
+                        <div class="mt-3">
+                            <a href="/dashboard" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-arrow-left me-2"></i>
+                                Volver al Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Indicador de carga mejorado -->
+                <div id="loading-indicator" class="card modern-card mb-4" style="display: none;">
+                    <div class="card-body text-center py-4">
+                        <div class="modern-spinner mx-auto mb-3"></div>
+                        <h6 class="card-title">Analizando repositorio...</h6>
+                        <p class="text-muted small mb-0" id="loading-status">Esto puede tomar unos segundos</p>
+                        <div class="progress mt-3">
+                            <div id="loading-progress" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información del repositorio -->
+                <div class="card modern-card mb-4" id="info-panel" style="display: none;">
+                    <div class="card-header modern-card-header">
+                        <h6 class="card-title mb-0 d-flex align-items-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Información del Repo
+                        </h6>
+                    </div>
+                    <div class="card-body" id="repo-info-content">
+                        <!-- Contenido dinámico -->
+                    </div>
+                </div>
+
+                <!-- Controles de visualización -->
+                <div class="card modern-card mb-4" id="visualization-controls" style="display: none;">
+                    <div class="card-header modern-card-header">
+                        <h6 class="card-title mb-0 d-flex align-items-center">
+                            <i class="fas fa-sliders-h me-2"></i>
+                            Controles de Vista
+                        </h6>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-secondary" id="btnZoomIn">
+                                <i class="fas fa-search-plus me-2"></i>
+                                Acercar
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="btnZoomOut">
+                                <i class="fas fa-search-minus me-2"></i>
+                                Alejar
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" id="btnReset">
+                                <i class="fas fa-home me-2"></i>
+                                Vista inicial
+                            </button>
+                            <button type="button" class="btn btn-outline-info" id="btnGenerateGraph">
+                                <i class="fas fa-project-diagram me-2"></i>
+                                Generar Grafo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros avanzados -->
+                <div class="card modern-card mb-4" id="filters-section" style="display: none;">
+                    <div class="card-header modern-card-header">
+                        <h6 class="card-title mb-0 d-flex align-items-center">
+                            <i class="fas fa-filter me-2"></i>
+                            Filtros
+                        </h6>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="d-flex flex-column gap-3">
+                            <div>
+                                <label for="dateRange" class="form-label text-muted small">Período</label>
+                                <select class="form-select" id="dateRange">
+                                    <option value="all">Todos los commits</option>
+                                    <option value="week">Última semana</option>
+                                    <option value="month">Último mes</option>
+                                    <option value="quarter">Último trimestre</option>
+                                    <option value="year">Último año</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label for="authorFilter" class="form-label text-muted small">Autor</label>
+                                <input type="text" class="form-control" id="authorFilter" 
+                                       placeholder="Filtrar por autor">
+                            </div>
+                            
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-success flex-fill" id="applyFilters">
+                                    <i class="fas fa-check me-1"></i>
+                                    Aplicar
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" id="clearFilters">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Área de visualización principal -->
+            <div class="col-xl-9 col-lg-8 col-md-12">
+                <div class="card modern-card h-100 fade-in">
+                    <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0 d-flex align-items-center">
+                            <i class="fas fa-cube me-2"></i>
+                            Visualización 3D
+                        </h5>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-light btn-sm" id="btnAnalisisTecnologias">
+                                <i class="fas fa-chart-bar me-1"></i>
+                                <span class="d-none d-md-inline">Análisis Técnico</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-light btn-sm" id="btnGenerarResumen">
+                                <i class="fas fa-file-alt me-1"></i>
+                                <span class="d-none d-md-inline">Generar Resumen</span>
+                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-download me-1"></i>
+                                    <span class="d-none d-md-inline">Exportar</span>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="#" onclick="exportAnalysis('all')">
+                                        <i class="fas fa-file-export me-2"></i>Análisis Completo
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportAnalysis('commits')">
+                                        <i class="fas fa-code-branch me-2"></i>Solo Commits
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportAnalysis('timeline')">
+                                        <i class="fas fa-clock me-2"></i>Timeline
+                                    </a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="exportAnalysis('technical')">
+                                        <i class="fas fa-cogs me-2"></i>Análisis Técnico
+                                    </a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body p-0 position-relative">
+                        <div id="visualization-container" class="three-container">
+                            <!-- Contenedor de Three.js -->
+                            
+                            <!-- Información de hover -->
+                            <div id="commit-info" class="commit-info-panel">
+                                <div class="commit-info-content">
+                                    <div class="commit-info-header">
+                                        <strong id="commit-title">Información del Commit</strong>
+                                        <button class="btn-close btn-close-white" id="commit-info-close"></button>
+                                    </div>
+                                    <div id="commit-details">
+                                        <!-- Contenido dinámico -->
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Instrucciones de interacción -->
+                            <div class="interaction-help">
+                                <div class="help-content">
+                                    <span>Clic: rotar | Rueda: zoom | Clic derecho: mover</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Controles de zoom flotantes -->
+                            <div class="zoom-controls">
+                                <button class="btn btn-sm btn-light" id="btnZoomInFloat" title="Acercar">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light" id="btnZoomOutFloat" title="Alejar">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <button class="btn btn-sm btn-light" id="btnResetFloat" title="Restablecer">
+                                    <i class="fas fa-home"></i>
+                                </button>
+                            </div>
+                            
+                            <!-- Estado vacío -->
+                            <div id="empty-state" class="position-absolute top-50 start-50 translate-middle text-center">
+                                <i class="fas fa-cube fa-4x mb-4 text-muted opacity-25"></i>
+                                <h4 class="text-muted">Listo para análisis</h4>
+                                <p class="text-muted">Ingresa un repositorio para comenzar la exploración 3D</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline de actividad -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card modern-card fade-in">
+                    <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0 d-flex align-items-center">
+                            <i class="fas fa-clock me-2"></i>
+                            Timeline de Actividad
+                        </h5>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="timeline-export">
+                                <i class="fas fa-download me-1"></i>
+                                <span class="d-none d-md-inline">Exportar</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="timeline-fullscreen">
+                                <i class="fas fa-expand me-1"></i>
+                                <span class="d-none d-md-inline">Pantalla completa</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="card-body p-0 position-relative">
+                        <div id="timeline-container" class="timeline-container">
+                            <!-- Estado vacío del timeline -->
+                            <div id="timeline-empty-state" class="position-absolute top-50 start-50 translate-middle text-center">
+                                <i class="fas fa-clock fa-3x mb-3 text-muted opacity-25"></i>
+                                <h5 class="text-muted">Timeline vacío</h5>
+                                <p class="text-muted">Los eventos aparecerán aquí después de cargar un repositorio</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal mejorado para detalles -->
+    <div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title d-flex align-items-center">
+                        <i class="fas fa-info-circle text-primary me-2"></i>
+                        <span>Detalles del Elemento</span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body" id="modal-details-content">
+                    <!-- Contenido dinámico -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications usando fragmento -->
+    <div th:replace="~{fragments/header :: toast-notifications}"></div>
+
+    <!-- Scripts usando fragmentos -->
+    <div th:replace="~{fragments/header :: base-scripts}"></div>
+    <div th:replace="~{fragments/header :: analysis-scripts}"></div>
+    <div th:replace="~{fragments/header :: auth-scripts}"></div>
+
+    <script th:inline="javascript">
+        // Configuración específica de análisis
+        document.addEventListener('DOMContentLoaded', function() {
+            // Repositorio inicial desde el servidor
+            const initialRepo = /*[[${initialRepo}]]*/ null;
+            
+            // Pasar configuración inicial al sistema de componentes
+            if (window.GitStellarPrism && initialRepo) {
+                // Establecer en el estado global para que HeaderComponent se conecte automáticamente
+                const stateManager = AppStateManager.getInstance();
+                stateManager.setState({
+                    currentRepo: initialRepo
+                });
+                
+                console.log('📁 Repositorio inicial configurado:', initialRepo);
+                console.log('🔗 Estado global actualizado para tiempo real');
+            }
+        });
+
+        // Función global para exportar análisis (mantenida para compatibilidad)
+        async function exportAnalysis(type) {
+            if (window.GitStellarPrism) {
+                const notificationComponent = window.GitStellarPrism.getComponent('notification');
+                const state = window.GitStellarPrism.getState();
+                const currentRepo = state.currentRepo;
+                
+                if (!currentRepo) {
+                    notificationComponent?.showWarning('Primero debes cargar un repositorio');
+                    return;
+                }
+
+                const [owner, repo] = currentRepo.split('/');
+                if (!owner || !repo) {
+                    notificationComponent?.showError('Formato de repositorio inválido');
+                    return;
+                }
+
+                const loadingId = notificationComponent?.showProgress(`Exportando ${type === 'all' ? 'análisis completo' : type}...`);
+
+                try {
+                    const githubService = ServiceFactory.getGithub();
+                    const data = await githubService.exportAnalysis(owner, repo, type);
+                    
+                    // Crear archivo de descarga
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${owner}-${repo}-${type}-analysis.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    notificationComponent?.hide(loadingId);
+                    notificationComponent?.showSuccess(`Análisis ${type} exportado exitosamente`);
+                } catch (error) {
+                    console.error('Error exportando análisis:', error);
+                    notificationComponent?.hide(loadingId);
+                    notificationComponent?.showError('Error al exportar análisis');
+                }
+            }
+        }
+    </script>
+</body>
+</html> 

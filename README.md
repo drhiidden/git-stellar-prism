@@ -1,229 +1,247 @@
-# GitStellarPrism
+# 🌟 GitStellarPrism - Visualizador de Repositorios GitHub
 
-![Project Banner](URL)
-
-**GitStellarPrism** es una aplicación web innovadora que transforma la actividad de un repositorio de GitHub en una experiencia visual dinámica e interactiva. No solo permite ver la evolución del código como una obra de arte generativo, sino que también analiza las tecnologías utilizadas y genera resúmenes técnicos automáticos, ideales para portfolios de desarrolladores.
-
----
+Aplicación Spring Boot WebFlux que transforma repositorios de GitHub en espectaculares visualizaciones 3D interactivas, con análisis de tecnologías y tiempo real.
 
 ## ✨ Características Principales
 
-Este proyecto combina la visualización de datos con el análisis de código para ofrecer una herramienta multifacética:
+### 🎨 Visualización 3D Interactiva
+- **Renderizado WebGL** con Three.js para máximo rendimiento
+- **Navegación fluida** (rotar, zoom, desplazar)
+- **Nodos de commits** con colores dinámicos según autor y fecha
+- **Conexiones temporales** entre commits relacionados
 
-### 1. 🎨 **Visualizador de Actividad del Repositorio**
-- **Línea de Tiempo Dinámica**: Visualiza el historial completo de commits como una constelación de nodos en 3D.
-- **Eventos en Tiempo Real**: Escucha webhooks de GitHub para mostrar nuevos commits, Pull Requests y Issues a medida que ocurren, con animaciones y efectos visuales.
-- **Interactividad Total**: Navega por el espacio 3D, haz zoom, y haz clic en cualquier nodo para obtener información detallada sobre un commit o evento.
-- **Filtros Personalizados**: Filtra la visualización por autor, rama o tipo de evento para centrarte en lo que más te interesa.
+### 🔐 Autenticación OAuth2 GitHub
+- **Acceso a repositorios privados** con máxima seguridad
+- **Scopes mínimos necesarios**: `repo`, `user:email`, `read:user`
+- **Salvaguardas múltiples** contra operaciones peligrosas
+- **Validación automática** de operaciones de solo lectura
 
-### 2. 🔬 **Analizador de Tecnologías**
-- **Detección Automática**: Analiza el contenido del repositorio para identificar los lenguajes de programación, frameworks y librerías utilizadas.
-- **Visualización de Datos**: Presenta la distribución de lenguajes en un gráfico interactivo.
-- **Explorador de Estructura**: Muestra una vista de árbol de la estructura de carpetas y archivos del proyecto.
+### ⚡ Tiempo Real
+- **Webhooks de GitHub** para actualizaciones instantáneas
+- **Server-Sent Events (SSE)** para comunicación bidireccional
+- **Filtrado inteligente** de eventos relevantes
+- **Validación de firma HMAC-SHA256** opcional
 
-### 3. 📄 **Generador de Resúmenes para Portfolio**
-- **Resúmenes Inteligentes**: Genera automáticamente un resumen técnico del proyecto, incluyendo su propósito, tecnologías principales y métricas de calidad.
-- **Editor Integrado**: Permite a los desarrolladores editar y personalizar el resumen generado para ajustarlo a sus necesidades.
-- **Exportación Múltiple**: Exporta el resumen final en formatos como Markdown, HTML o PDF, listo para ser incluido en un CV, portfolio o perfil de LinkedIn.
+### 📊 Análisis Avanzado
+- **Detección automática de tecnologías** usadas
+- **Análisis de contribuciones** por autor
+- **Timeline interactivo** de actividad
+- **Generación de resúmenes** para portfolios
 
----
+## 🚀 Inicio Rápido
 
-## 🔐 Características de Seguridad
+### 1. Configurar OAuth2 GitHub
 
-### Arquitectura de Seguridad Profesional
+1. Ve a [GitHub Developer Settings](https://github.com/settings/developers)
+2. Crear nueva **OAuth App**:
+   - **Application name**: `GitStellarPrism`
+   - **Homepage URL**: `http://localhost:8080`
+   - **Authorization callback URL**: `http://localhost:8080/login/oauth2/code/github`
+3. Copiar **Client ID** y **Client Secret**
 
-Esta aplicación implementa las mejores prácticas de seguridad siguiendo la documentación oficial de Spring Security WebFlux:
-
-#### 🛡️ OAuth2 Integration
-- **Autenticación OAuth2 con GitHub**: Configuración completa siguiendo el patrón Authorization Code Grant
-- **Manejo Automático de Tokens**: Gestión automática de refresh tokens y expiración
-- **Alcance de Permisos**: Configurado con permisos mínimos necesarios (`repo`, `user:email`, `read:user`, `read:org`)
-
-#### 🌐 WebClient Integration
-- **WebClient con OAuth2**: Configuración profesional con filtros de autenticación automática
-- **Múltiples Clientes**: 
-  - `githubWebClient`: Para llamadas autenticadas a GitHub API
-  - `webClient`: Para uso general
-  - `oAuth2WebClient`: Para otras APIs que requieran OAuth2
-- **Manejo de Errores**: Sistema centralizado de manejo de errores con rate limiting y retry logic
-
-#### 🔒 Security Configuration
-- **CSRF Protection**: Configuración granular que protege formularios pero permite APIs REST
-- **Headers de Seguridad**: HSTS, X-Content-Type-Options, y Frame-Options configurados
-- **Autorización por Rutas**: Control granular de acceso a diferentes endpoints
-- **Session Management**: Configuración optimizada para aplicaciones reactivas
-
-#### ⚡ Performance & Reliability
-- **Connection Pooling**: Configuración optimizada de timeouts y pools de conexión
-- **Memory Management**: Límites configurables para responses grandes (2MB por defecto)
-- **Logging Estructurado**: Logs de debug y error con información útil para monitoring
-
-## 🏗️ Arquitectura de Beans
-
-### Separación de Responsabilidades
-
-La aplicación sigue una arquitectura limpia con separación clara de responsabilidades:
-
-```
-SecurityConfig
-├── ReactiveOAuth2AuthorizedClientManager
-├── WebClient Beans (githubWebClient, oAuth2WebClient, webClient)
-├── Authentication Handlers (success/failure)
-└── CSRF & Headers Configuration
-
-WebClientConfig
-├── Timeout Configuration
-├── Connection Management
-└── OAuth2 Integration
-
-OAuth2ErrorConfig
-├── Centralized Error Handling
-├── Rate Limiting Management
-└── Structured Logging
-```
-
-### Bean Management Best Practices
-
-1. **@Qualifier Usage**: Diferenciación clara entre diferentes tipos de WebClient
-2. **Configuration Properties**: Externalized configuration con valores por defecto sensatos
-3. **Conditional Beans**: Configuración que se adapta al entorno (desarrollo/producción)
-4. **Error Boundaries**: Manejo centralizado de errores con fallbacks apropiados
-
-## 🚀 Configuración
-
-### Variables de Entorno Requeridas
+### 2. Configurar Variables de Entorno
 
 ```bash
-# OAuth2 Configuration
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
+# Windows (PowerShell)
+$env:GITHUB_CLIENT_ID="tu_client_id_aquí"
+$env:GITHUB_CLIENT_SECRET="tu_client_secret_aquí"
 
-# Optional: Fallback token for public APIs
-GITHUB_API_TOKEN=your_github_token
+# Linux/macOS
+export GITHUB_CLIENT_ID="tu_client_id_aquí"
+export GITHUB_CLIENT_SECRET="tu_client_secret_aquí"
+
+# Opcional: Secret para webhooks
+export GITHUB_WEBHOOK_SECRET="tu_webhook_secret_aquí"
 ```
 
-### Propiedades de Configuración
+### 3. Ejecutar la Aplicación
 
-```properties
-# Security Configuration
-app.security.success-url=/
-app.security.logout-success-url=/
-
-# WebClient Timeouts (milliseconds)
-app.webclient.timeout.connection=10000
-app.webclient.timeout.read=30000
-app.webclient.timeout.write=30000
-app.webclient.max-memory-size=2097152
-
-# OAuth2 GitHub Configuration
-spring.security.oauth2.client.registration.github.scope=repo,user:email,read:user,read:org
-```
-
-## 🔧 Componentes Principales
-
-### SecurityConfig
-Configuración principal de seguridad que incluye:
-- OAuth2 authorization code flow
-- CSRF protection granular
-- Security headers optimization
-- Route-based authorization
-
-### WebClientConfig
-Configuración de clientes HTTP con:
-- OAuth2 automatic token injection
-- Connection pooling optimization
-- Error handling and retry logic
-- Performance monitoring
-
-### GithubService
-Servicio optimizado para GitHub API con:
-- Automatic OAuth2 authentication
-- Rate limit handling
-- Error recovery mechanisms
-- Structured response mapping
-
-## 🛠️ Instalación y Ejecución
-
-### Prerrequisitos
-- Java 21+
-- Maven 3.9+
-- Aplicación OAuth2 registrada en GitHub
-
-### Pasos de Instalación
-
-1. **Clonar el repositorio**
 ```bash
-git clone <repository-url>
 cd ghvis
+mvn spring-boot:run
 ```
 
-2. **Configurar OAuth2 en GitHub**
-   - Ir a GitHub Settings > Developer settings > OAuth Apps
-   - Crear nueva OAuth App
-   - Authorization callback URL: `http://localhost:8080/login/oauth2/code/github`
+### 4. Abrir en el Navegador
 
-3. **Configurar variables de entorno**
+1. Ve a: http://localhost:8080
+2. Haz clic en **"Iniciar Sesión"** 
+3. Autoriza la aplicación en GitHub
+4. ¡Ingresa un repositorio y visualízalo!
+
+## 🎯 Cómo Usar
+
+### Visualizar un Repositorio
+
+1. **Inicia sesión** con tu cuenta de GitHub
+2. **Ingresa el repositorio** en formato `owner/repo` (ej: `microsoft/vscode`)
+3. **Haz clic en "Visualizar"** y espera a que carguen los datos
+4. **Interactúa** con la visualización 3D:
+   - 🖱️ **Click izquierdo + arrastrar**: Rotar vista
+   - 🎢 **Rueda del mouse**: Zoom in/out
+   - 🖱️ **Click derecho + arrastrar**: Mover vista
+   - 🎯 **Click en commit**: Ver detalles
+
+### Funciones Avanzadas
+
+- **Filtros por fecha**: Última semana, mes, trimestre, año
+- **Filtros por autor**: Buscar commits de desarrolladores específicos
+- **Timeline interactivo**: Navegar por histórico de actividad
+- **Análisis de tecnologías**: Ver distribución de lenguajes
+- **Tiempo real**: Recibir notificaciones de nuevos commits
+
+## 🛠️ Tecnologías Utilizadas
+
+### Backend
+- **Spring Boot 3.5.0** - Framework principal
+- **Spring WebFlux** - Programación reactiva
+- **Spring Security OAuth2** - Autenticación GitHub
+- **WebClient** - Cliente HTTP reactivo
+- **H2 Database** - Cache en memoria
+- **Maven** - Gestión de dependencias
+
+### Frontend
+- **Three.js** - Renderizado 3D WebGL
+- **Bootstrap 5** - UI responsivo
+- **Vanilla JavaScript** - Lógica de interfaz
+- **Server-Sent Events** - Comunicación tiempo real
+- **FontAwesome** - Iconografía
+
+## 📁 Estructura del Proyecto
+
+```
+ghvis/
+├── src/main/java/com/drhdn/ghvis/
+│   ├── config/          # Configuraciones (Security, WebClient, OAuth2)
+│   ├── controller/      # Controladores REST y vistas
+│   ├── service/         # Lógica de negocio
+│   ├── model/          # Modelos de datos
+│   ├── entity/         # Entidades JPA
+│   └── repository/     # Repositorios de datos
+├── src/main/resources/
+│   ├── templates/      # Plantillas Thymeleaf
+│   ├── static/         # Recursos estáticos (CSS, JS)
+│   └── application*.properties  # Configuraciones
+└── target/             # Artefactos compilados
+```
+
+## 🔧 Configuración Avanzada
+
+### Perfiles de Ejecución
+
 ```bash
-export GITHUB_CLIENT_ID=your_client_id
-export GITHUB_CLIENT_SECRET=your_client_secret
+# Desarrollo (logging verbose)
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
+
+# Producción (logging mínimo)
+mvn spring-boot:run -Dspring-boot.run.profiles=prod
 ```
 
-4. **Ejecutar la aplicación**
+### Configurar Webhooks GitHub
+
+1. En tu repositorio GitHub: **Settings** → **Webhooks** → **Add webhook**
+2. **Payload URL**: `http://tu-dominio.com/webhook`
+3. **Content type**: `application/json`
+4. **Secret**: Tu `GITHUB_WEBHOOK_SECRET`
+5. **Events**: `Push`, `Pull requests`, `Issues`
+
+### Variables de Entorno Completas
+
 ```bash
-./mvnw spring-boot:run
+# OAuth2 GitHub (REQUERIDO)
+GITHUB_CLIENT_ID=tu_client_id_aquí
+GITHUB_CLIENT_SECRET=tu_client_secret_aquí
+
+# Webhook GitHub (OPCIONAL)
+GITHUB_WEBHOOK_SECRET=tu_webhook_secret_aquí
+
+# Base de datos (OPCIONAL - usa H2 por defecto)
+SPRING_DATASOURCE_URL=jdbc:h2:mem:testdb
+SPRING_DATASOURCE_USERNAME=sa
+SPRING_DATASOURCE_PASSWORD=password
+
+# Configuración de red (OPCIONAL)
+APP_WEBCLIENT_TIMEOUT_CONNECTION=10000
+APP_WEBCLIENT_TIMEOUT_READ=30000
+APP_WEBCLIENT_MAX_MEMORY_SIZE=2097152
 ```
 
-5. **Acceder a la aplicación**
-   - Navegador: `http://localhost:8080`
-   - Console H2 (desarrollo): `http://localhost:8080/h2-console`
+## 🔒 Política de Seguridad
 
-## 📊 Monitoring y Observabilidad
+Esta aplicación implementa **múltiples capas de seguridad**:
 
-### Endpoints de Actuator
-- `/actuator/health`: Estado de la aplicación
-- `/actuator/info`: Información de la aplicación
-- `/actuator/metrics`: Métricas de performance
+### ✅ Operaciones de Solo Lectura
+- **Validación automática** de todas las operaciones
+- **Lista blanca estricta** de métodos permitidos
+- **Prohibición total** de operaciones de escritura (POST, PUT, DELETE)
 
-### Logging Configuration
-- Debug level para OAuth2 y security components
-- Structured logging para análisis
-- Performance monitoring para WebClient calls
+### ✅ Autenticación Robusta
+- **OAuth2 Authorization Code Flow** completo
+- **Refresh automático** de tokens
+- **CSRF Protection** granular
+- **Headers de seguridad** optimizados
 
-## 🔍 Debugging y Troubleshooting
+### ✅ Validación de Webhooks
+- **Firma HMAC-SHA256** para validar origen
+- **Filtrado de eventos** relevantes únicamente
+- **Rate limiting** automático
+- **Logging de seguridad** completo
 
-### Common Issues
+## 🐛 Resolución de Problemas
 
-1. **401 Unauthorized**: Verificar configuración OAuth2 y tokens
-2. **Rate Limit Exceeded**: GitHub API tiene límites, considerar caché
-3. **CORS Issues**: Verificar configuración de headers y origins
+### Error: "Access Denied"
+```bash
+# Verificar variables de entorno
+echo $GITHUB_CLIENT_ID
+echo $GITHUB_CLIENT_SECRET
 
-### Debug Configuration
-```properties
-logging.level.org.springframework.security=DEBUG
-logging.level.org.springframework.web.reactive.function.client=DEBUG
-logging.level.com.drhdn.ghvis=DEBUG
+# Verificar configuración OAuth2 GitHub
+curl -v http://localhost:8080/oauth2/authorization/github
 ```
 
-## 📚 Referencias
+### Error: "Connection refused"
+```bash
+# Verificar conectividad a GitHub API
+curl -v https://api.github.com/repos/microsoft/vscode
 
-- [Spring Security WebFlux Documentation](https://docs.spring.io/spring-security/reference/reactive/oauth2/index.html)
-- [Spring WebFlux Reference](https://docs.spring.io/spring-framework/docs/current/reference/html/web-reactive.html)
-- [GitHub OAuth2 Documentation](https://docs.github.com/en/developers/apps/building-oauth-apps)
+# Verificar logs de aplicación
+tail -f logs/application.log
+```
 
-## 🤝 Contribución
+### Error: "Webhook signature invalid"
+```bash
+# Verificar secret de webhook
+echo $GITHUB_WEBHOOK_SECRET
 
-Este proyecto sigue las mejores prácticas de desarrollo con Spring Boot. Para contribuir:
+# Verificar payload en logs
+grep "Webhook recibido" logs/application.log
+```
 
-1. Fork del repositorio
-2. Crear feature branch
-3. Seguir convenciones de código establecidas
-4. Añadir tests apropiados
-5. Crear Pull Request
+## 📈 Rendimiento y Escalabilidad
+
+- **Conexión HTTP/2** para máximo throughput
+- **Connection pooling** optimizado para GitHub API
+- **Cache inteligente** de commits en H2
+- **Compresión automática** de respuestas
+- **Timeouts configurables** por entorno
+
+## 🤝 Contribuir
+
+1. **Fork** el proyecto
+2. **Crear rama** para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. **Commit** tus cambios (`git commit -m 'Agregar nueva funcionalidad'`)
+4. **Push** a la rama (`git push origin feature/nueva-funcionalidad`)
+5. **Crear Pull Request**
 
 ## 📄 Licencia
 
-Este proyecto está bajo la Licencia MIT. Consulta el archivo `LICENSE` para más detalles. 
+Este proyecto está bajo la licencia MIT. Ver el archivo `LICENSE` para más detalles.
+
+## 🆘 Soporte
+
+- **Issues**: [GitHub Issues](https://github.com/tu-usuario/gitstellarprism/issues)
+- **Documentación**: [Wiki del proyecto](https://github.com/tu-usuario/gitstellarprism/wiki)
+- **Discusiones**: [GitHub Discussions](https://github.com/tu-usuario/gitstellarprism/discussions)
 
 ---
 
-**Nota**: Esta aplicación ha sido diseñada siguiendo las mejores prácticas de seguridad y arquitectura de Spring Boot WebFlux. Toda la configuración de seguridad está optimizada para entornos de producción con fallbacks apropiados para desarrollo. 
+⭐ **¡Si te gusta el proyecto, dale una estrella!** ⭐ 

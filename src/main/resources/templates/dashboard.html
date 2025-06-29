@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/header :: common-head ('Dashboard')}">
+    <!-- Head común desde fragmento -->
+</head>
+<body>
+    <!-- Navegación usando fragmento -->
+    <div th:replace="~{fragments/header :: main-nav}"></div>
+
+    <!-- Contenido principal del Dashboard - Manejado por DashboardComponent -->
+    <div class="container-fluid p-4" id="dashboard-container">
+        <!-- El contenido se renderizará dinámicamente por el componente -->
+        <div class="d-flex justify-content-center py-5">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando dashboard...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notifications usando fragmento -->
+    <div th:replace="~{fragments/header :: toast-notifications}"></div>
+
+    <!-- CSS específico del dashboard -->
+    <style>
+        .dashboard-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .repo-card {
+            border-left: 4px solid #007bff;
+            transition: all 0.3s ease;
+        }
+        .repo-card:hover {
+            border-left-color: #28a745;
+            transform: translateX(5px);
+        }
+        .tech-badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .welcome-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        .stats-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 10px;
+            padding: 1.5rem;
+            text-align: center;
+        }
+    </style>
+
+    <!-- Scripts usando fragmentos -->
+    <div th:replace="~{fragments/header :: base-scripts}"></div>
+    <div th:replace="~{fragments/header :: auth-scripts}"></div>
+
+</body>
+</html> 

@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     
-    <!-- Bootstrap CSS PRIMERO -->
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- Google Fonts -->
@@ -22,50 +22,191 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     
-    <!-- D3.js para Timeline -->
+    <!-- D3.js para gráficos -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
     
-    <!-- Estilos personalizados DESPUÉS de Bootstrap -->
+    <!-- Estilos personalizados -->
     <link rel="stylesheet" th:href="@{/css/styles.css}">
+    
+    <style>
+        .feature-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.2);
+            border-color: rgba(13, 110, 253, 0.3);
+        }
+        .feature-card.active {
+            border-color: var(--bs-primary);
+            background: linear-gradient(135deg, rgba(13, 110, 253, 0.1), rgba(13, 110, 253, 0.05));
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(13, 110, 253, 0.3);
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            transition: left 0.5s ease;
+        }
+        .feature-card:hover::before {
+            left: 100%;
+        }
+        .demo-section {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .demo-section.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+        .demo-container {
+            min-height: 500px;
+            border: 2px dashed #dee2e6;
+            border-radius: 0.5rem;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+        }
+        .demo-container:hover {
+            border-color: #adb5bd;
+            background: #e9ecef;
+        }
+        .interactive-3d-demo {
+            width: 100%;
+            height: 400px;
+            background: #000;
+            border-radius: 0.5rem;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #333;
+        }
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            border-radius: 0.5rem;
+            background: white;
+            padding: 1rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        /* Pulso de conexión */
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        /* Efectos de botones */
+        .btn {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255,255,255,0.3);
+            border-radius: 50%;
+            transition: width 0.3s ease, height 0.3s ease;
+            transform: translate(-50%, -50%);
+        }
+        .btn:active::before {
+            width: 300px;
+            height: 300px;
+        }
+        
+        /* Timeline demo específico */
+        .timeline-demo {
+            padding: 1rem;
+        }
+        
+        /* Efectos de carga */
+        .loading-shimmer {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        
+        /* Indicadores de estado */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.8rem;
+        }
+        .status-indicator.status-success {
+            background: rgba(40, 167, 69, 0.1);
+            color: #28a745;
+        }
+        .status-indicator.status-error {
+            background: rgba(220, 53, 69, 0.1);
+            color: #dc3545;
+        }
+    </style>
 </head>
 <body>
-    <!-- Navegación moderna con Bootstrap -->
-    <nav class="navbar navbar-expand-lg sticky-top modern-navbar">
-        <div class="container-fluid px-4">
+    <!-- Navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
+        <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="/">
                 <i class="fas fa-cube me-2"></i>
                 <span>GitStellarPrism</span>
             </a>
             
-            <div class="d-flex align-items-center gap-3">
-                <!-- Estado de conexión tiempo real -->
-                <div id="realtime-status" class="status-indicator">
-                    <i class="fas fa-circle pulse"></i>
-                    <span>Verificando conexión...</span>
+            <div class="ms-auto">
+                <div th:if="${isAuthenticated}">
+                    <div class="text-center py-3">
+                        <i class="fas fa-spinner fa-spin me-2"></i>
+                        <span>Redirigiendo al Dashboard...</span>
+                </div>
                 </div>
                 
-                <!-- Usuario autenticado -->
-                <div class="dropdown" sec:authorize="isAuthenticated()">
-                    <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="fas fa-user-circle me-1"></i>
-                        <span sec:authentication="principal.attributes['login']">Usuario</span>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="/api/user/info">
-                            <i class="fas fa-user me-2"></i> Mi Perfil
-                        </a></li>
-                        <li><a class="dropdown-item" href="/api/user/repositories">
-                            <i class="fas fa-folder-open me-2"></i> Mis Repositorios
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="/logout">
-                            <i class="fas fa-sign-out-alt me-2"></i> Cerrar Sesión
-                        </a></li>
-                    </ul>
-                </div>
-                
-                <!-- Login para usuarios no autenticados -->
-                <div sec:authorize="!isAuthenticated()">
+                <div th:unless="${isAuthenticated}">
                     <a class="btn btn-primary" href="/oauth2/authorization/github">
                         <i class="fab fa-github me-2"></i>
                         <span>Iniciar Sesión</span>
@@ -75,233 +216,291 @@
         </div>
     </nav>
 
-    <!-- Contenido principal con Bootstrap Grid -->
-    <div class="container-fluid p-4">
-        <div class="row g-4">
-            
-            <!-- Panel de control lateral -->
-            <div class="col-xl-3 col-lg-4 col-md-12">
-                <!-- Sección de entrada de repositorio -->
-                <div class="card modern-card mb-4 fade-in">
-                    <div class="card-header modern-card-header">
-                        <h6 class="card-title mb-0 d-flex align-items-center">
-                            <i class="fas fa-search me-2"></i>
-                            Explorar Repositorio
-                        </h6>
-                    </div>
-                    
-                    <div class="card-body">
-                        <form id="repoForm" class="d-flex flex-column gap-3">
-                            <div>
-                                <label for="repoUrl" class="form-label text-muted small mb-2">
-                                    Repositorio de GitHub
-                                </label>
-                                <input type="text" 
-                                       class="form-control modern-input" 
-                                       id="repoUrl" 
-                                       placeholder="owner/repository"
-                                       autocomplete="off"
-                                       required>
-                                <div class="form-text text-muted small">
-                                    Ej: microsoft/vscode, facebook/react
+    <!-- Contenido principal para usuarios NO autenticados -->
+    <div th:unless="${isAuthenticated}">
+        <!-- Hero Section -->
+        <section class="hero-section">
+            <div class="container text-center">
+                <h1 class="display-4 fw-bold mb-4">
+                    <i class="fas fa-cube me-3"></i>
+                    GitStellarPrism
+                </h1>
+                <p class="lead mb-4">
+                    Transforma tus repositorios de GitHub en experiencias visuales interactivas
+                </p>
+                <p class="mb-4">
+                    Descubre patrones, analiza tecnologías y explora tu código como nunca antes
+                </p>
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a class="btn btn-light btn-lg" href="/oauth2/authorization/github">
+                        <i class="fab fa-github me-2"></i>
+                        Acceso Completo con GitHub
+                    </a>
+                    <button class="btn btn-outline-light btn-lg" onclick="scrollToDemo()">
+                        <i class="fas fa-play me-2"></i>
+                        Ver Demo Interactivo
+                    </button>
                                 </div>
                             </div>
-                            
-                            <button type="submit" class="btn btn-primary w-100 modern-btn-primary">
-                                <i class="fas fa-rocket me-2"></i>
-                                <span>Visualizar</span>
-                            </button>
-                        </form>
-                    </div>
+        </section>
+
+        <!-- Funcionalidades Principales -->
+        <section class="py-5" id="features">
+            <div class="container">
+                <div class="text-center mb-5">
+                    <h2 class="fw-bold">Explora las Funcionalidades</h2>
+                    <p class="text-muted">Haz clic en cada tarjeta para ver una demostración interactiva</p>
                 </div>
                 
-                <!-- Indicador de carga mejorado -->
-                <div id="loading-indicator" class="card modern-card mb-4" style="display: none;">
-                    <div class="card-body text-center py-4">
-                        <div class="modern-spinner mx-auto mb-3"></div>
-                        <h6 class="card-title">Analizando repositorio...</h6>
-                        <p class="text-muted small mb-0">Esto puede tomar unos segundos</p>
+                <div class="row g-4 mb-5">
+                    <div class="col-md-4">
+                        <div class="card feature-card h-100" data-feature="3d" onclick="showFeatureDemo('3d')" role="button" tabindex="0">
+                            <div class="card-body text-center p-4">
+                                <i class="fas fa-cube fa-4x text-primary mb-3"></i>
+                                <h5 class="card-title fw-bold">Visualización 3D</h5>
+                                <p class="card-text text-muted">
+                                    Explora tu repositorio en un espacio tridimensional interactivo. 
+                                    Cada archivo y directorio se representa como un objeto 3D navegable.
+                                </p>
+                                <div class="mt-3">
+                                    <span class="badge bg-primary">Three.js</span>
+                                    <span class="badge bg-secondary">WebGL</span>
+                                </div>
+                                <div class="mt-3">
+                                    <div class="d-flex align-items-center justify-content-center gap-2 text-primary">
+                                        <i class="fas fa-hand-pointer"></i>
+                                        <small class="fw-bold">Haz clic para ver demo</small>
                     </div>
                 </div>
-
-                <!-- Controles de visualización -->
-                <div class="card modern-card mb-4" id="visualization-controls" style="display: none;">
-                    <div class="card-header modern-card-header">
-                        <h6 class="card-title mb-0 d-flex align-items-center">
-                            <i class="fas fa-sliders-h me-2"></i>
-                            Controles de Vista
-                        </h6>
                     </div>
-                    
-                    <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <button type="button" class="btn btn-outline-secondary" id="btnZoomIn">
-                                <i class="fas fa-search-plus me-2"></i>
-                                Acercar
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary" id="btnZoomOut">
-                                <i class="fas fa-search-minus me-2"></i>
-                                Alejar
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary" id="btnReset">
-                                <i class="fas fa-home me-2"></i>
-                                Vista inicial
-                            </button>
-                            <button type="button" class="btn btn-outline-warning" id="btnDebugNodes">
-                                <i class="fas fa-bug me-2"></i>
-                                Nodos de prueba
-                            </button>
                         </div>
                     </div>
-                </div>
-
-                <!-- Filtros avanzados -->
-                <div class="card modern-card mb-4" id="filters-section" style="display: none;">
-                    <div class="card-header modern-card-header">
-                        <h6 class="card-title mb-0 d-flex align-items-center">
-                            <i class="fas fa-filter me-2"></i>
-                            Filtros
-                        </h6>
-                    </div>
                     
-                    <div class="card-body">
-                        <div class="d-flex flex-column gap-3">
-                            <div>
-                                <label for="dateRange" class="form-label text-muted small">Período</label>
-                                <select class="form-select" id="dateRange">
-                                    <option value="all">Todos los commits</option>
-                                    <option value="week">Última semana</option>
-                                    <option value="month">Último mes</option>
-                                    <option value="quarter">Último trimestre</option>
-                                    <option value="year">Último año</option>
-                                </select>
+                    <div class="col-md-4">
+                        <div class="card feature-card h-100" data-feature="analysis" onclick="showFeatureDemo('analysis')" role="button" tabindex="0">
+                            <div class="card-body text-center p-4">
+                                <i class="fas fa-chart-line fa-4x text-success mb-3"></i>
+                                <h5 class="card-title fw-bold">Análisis Técnico</h5>
+                                <p class="card-text text-muted">
+                                    Obtén métricas detalladas sobre tecnologías utilizadas, 
+                                    complejidad del código y patrones de desarrollo.
+                                </p>
+                                <div class="mt-3">
+                                    <span class="badge bg-success">Métricas</span>
+                                    <span class="badge bg-secondary">Insights</span>
+                                </div>
+                                <div class="mt-3">
+                                    <div class="d-flex align-items-center justify-content-center gap-2 text-success">
+                                        <i class="fas fa-hand-pointer"></i>
+                                        <small class="fw-bold">Haz clic para ver demo</small>
                             </div>
-                            
-                            <div>
-                                <label for="authorFilter" class="form-label text-muted small">Autor</label>
-                                <input type="text" class="form-control" id="authorFilter" 
-                                       placeholder="Filtrar por autor">
                             </div>
-                            
-                            <div class="d-flex gap-2">
-                                <button type="button" class="btn btn-success flex-fill" id="applyFilters">
-                                    <i class="fas fa-check me-1"></i>
-                                    Aplicar
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary" id="clearFilters">
-                                    <i class="fas fa-times"></i>
-                                </button>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Panel de información contextual -->
-                <div class="card modern-card" id="info-panel" style="display: none;">
-                    <div class="card-header modern-card-header">
-                        <h6 class="card-title mb-0 d-flex align-items-center">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Información
-                        </h6>
+                    
+                    <div class="col-md-4">
+                        <div class="card feature-card h-100" data-feature="timeline" onclick="showFeatureDemo('timeline')" role="button" tabindex="0">
+                            <div class="card-body text-center p-4">
+                                <i class="fas fa-project-diagram fa-4x text-info mb-3"></i>
+                                <h5 class="card-title fw-bold">Timeline & Grafos</h5>
+                                <p class="card-text text-muted">
+                                    Visualiza la evolución temporal de tu proyecto y 
+                                    las relaciones entre archivos y componentes.
+                                </p>
+                                <div class="mt-3">
+                                    <span class="badge bg-info">D3.js</span>
+                                    <span class="badge bg-secondary">Timeline</span>
+                                </div>
+                                <div class="mt-3">
+                                    <div class="d-flex align-items-center justify-content-center gap-2 text-info">
+                                        <i class="fas fa-hand-pointer"></i>
+                                        <small class="fw-bold">Haz clic para ver demo</small>
                     </div>
-                    <div class="card-body" id="commit-info">
-                        <div class="text-center text-muted py-3">
-                            <i class="fas fa-mouse-pointer fa-2x mb-3 opacity-50"></i>
-                            <p class="mb-0">Haz clic en un elemento de la visualización para ver sus detalles</p>
+                </div>
+                    </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </section>
 
-            <!-- Área de visualización principal -->
-            <div class="col-xl-9 col-lg-8 col-md-12">
-                <div class="card modern-card h-100 fade-in">
-                    
-                    <!-- Header de visualización -->
-                    <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0 d-flex align-items-center">
-                            <i class="fas fa-project-diagram me-2"></i>
-                            Visualización 3D Interactiva
+        <!-- Área de Demo Interactiva -->
+        <section class="py-5 bg-light" id="demo">
+            <div class="container">
+                <div class="row">
+                    <div class="col-lg-4 mb-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-rocket me-2"></i>
+                                    Prueba con Repositorio Público
                         </h5>
-                        
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-info btn-sm" id="btnAnalisisTecnologias">
-                                <i class="fas fa-code me-1"></i>
-                                <span class="d-none d-md-inline">Análisis</span>
+                            </div>
+                            <div class="card-body">
+                                <form id="demoForm">
+                                    <div class="mb-3">
+                                        <label for="repoInput" class="form-label">Repositorio GitHub</label>
+                                        <input type="text" class="form-control" id="repoInput" 
+                                               placeholder="owner/repository" required>
+                                        <div class="form-text">Ejemplo: microsoft/vscode</div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary w-100">
+                                        <i class="fas fa-search me-2"></i>
+                                        Analizar Repositorio
+                                    </button>
+                                </form>
+                                
+                                <div class="mt-3">
+                                    <h6>Repositorios de ejemplo:</h6>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="loadExample('facebook/react')">
+                                            React
+                                        </button>
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="loadExample('microsoft/vscode')">
+                                            VS Code
                             </button>
-                            <button type="button" class="btn btn-outline-success btn-sm" id="btnGenerarResumen">
-                                <i class="fas fa-file-alt me-1"></i>
-                                <span class="d-none d-md-inline">Resumen</span>
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="loadExample('vuejs/vue')">
+                                            Vue.js
                             </button>
-                        </div>
-                    </div>
-                    
-                    <!-- Container de visualización -->
-                    <div class="card-body p-0 position-relative">
-                        <div id="visualization-container" class="visualization-container">
-                            
-                            <!-- Overlay de ayuda -->
-                            <div class="visualization-overlay">
-                                <div class="d-flex align-items-center gap-2 text-muted small">
-                                    <i class="fas fa-mouse"></i>
-                                    <span>Clic: rotar | Rueda: zoom | Clic derecho: mover</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info mt-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Versión Demo:</strong> Solo repositorios públicos. 
+                                    <a href="/oauth2/authorization/github">Inicia sesión</a> para acceso completo.
                                 </div>
                             </div>
-                            
-                            <!-- Controles de zoom flotantes -->
-                            <div class="zoom-controls">
-                                <button class="btn btn-sm btn-light" id="btnZoomInFloat" title="Acercar">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light" id="btnZoomOutFloat" title="Alejar">
-                                    <i class="fas fa-minus"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light" id="btnResetFloat" title="Restablecer">
-                                    <i class="fas fa-home"></i>
-                                </button>
-                            </div>
-                            
-                            <!-- Estado vacío -->
-                            <div id="empty-state" class="position-absolute top-50 start-50 translate-middle text-center">
-                                <i class="fas fa-cube fa-4x mb-4 text-muted opacity-25"></i>
-                                <h4 class="text-muted">Visualización lista</h4>
-                                <p class="text-muted">Ingresa un repositorio para comenzar la exploración</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Timeline de actividad -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card modern-card fade-in">
-                    <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0 d-flex align-items-center">
-                            <i class="fas fa-clock me-2"></i>
-                            Timeline de Actividad
-                        </h5>
-                        
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="timeline-export">
-                                <i class="fas fa-download me-1"></i>
-                                <span class="d-none d-md-inline">Exportar</span>
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="timeline-fullscreen">
-                                <i class="fas fa-expand me-1"></i>
-                                <span class="d-none d-md-inline">Pantalla completa</span>
-                            </button>
                         </div>
                     </div>
                     
-                    <div class="card-body p-0 position-relative">
-                        <div id="timeline-container" class="timeline-container">
-                            <!-- Estado vacío del timeline -->
-                            <div id="timeline-empty-state" class="position-absolute top-50 start-50 translate-middle text-center">
-                                <i class="fas fa-clock fa-3x mb-3 text-muted opacity-25"></i>
-                                <h5 class="text-muted">Timeline vacío</h5>
-                                <p class="text-muted">Los eventos aparecerán aquí después de cargar un repositorio</p>
+                    <div class="col-lg-8">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0" id="demo-title">
+                                    <i class="fas fa-cube me-2"></i>
+                                    Selecciona una funcionalidad
+                                </h5>
+                                <div id="demo-controls" style="display: none;">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="resetDemo()">
+                                        <i class="fas fa-refresh me-1"></i>
+                                        Reiniciar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body">
+                                <!-- Demo de Visualización 3D -->
+                                <div id="demo-3d" class="demo-section">
+                                    <div class="demo-container d-flex align-items-center justify-content-center">
+                                        <div class="interactive-3d-demo" id="threejs-container">
+                                            <div class="position-absolute top-50 start-50 translate-middle text-center text-white">
+                                                <i class="fas fa-cube fa-3x mb-3"></i>
+                                                <h4>Demo Visualización 3D</h4>
+                                                <p>Ingresa un repositorio para ver la magia</p>
+                                                <button class="btn btn-light" onclick="start3DDemo()">
+                                                    <i class="fas fa-play me-2"></i>
+                                                    Iniciar Demo
+                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <h6>Características:</h6>
+                                        <ul class="list-unstyled">
+                                            <li><i class="fas fa-check text-success me-2"></i>Navegación 3D fluida</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Representación de estructura de archivos</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Interacción con objetos</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Zoom y rotación</li>
+                                        </ul>
+                                    </div>
+                            </div>
+                            
+                                <!-- Demo de Análisis Técnico -->
+                                <div id="demo-analysis" class="demo-section">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="chart-container" id="language-chart">
+                                                <h6 class="text-center mb-3">Distribución de Lenguajes</h6>
+                                                <div class="d-flex align-items-center justify-content-center h-75">
+                                                    <div class="text-center text-muted">
+                                                        <i class="fas fa-chart-pie fa-3x mb-3"></i>
+                                                        <p>Gráfico de lenguajes aparecerá aquí</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="chart-container" id="complexity-chart">
+                                                <h6 class="text-center mb-3">Complejidad del Código</h6>
+                                                <div class="d-flex align-items-center justify-content-center h-75">
+                                                    <div class="text-center text-muted">
+                                                        <i class="fas fa-chart-bar fa-3x mb-3"></i>
+                                                        <p>Métricas de complejidad aparecerán aquí</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+                                    <div class="mt-3">
+                                        <h6>Análisis incluye:</h6>
+                                        <ul class="list-unstyled">
+                                            <li><i class="fas fa-check text-success me-2"></i>Distribución de tecnologías</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Métricas de código</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Patrones de desarrollo</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Recomendaciones</li>
+                                        </ul>
+                                    </div>
+        </div>
+
+                                <!-- Demo de Timeline -->
+                                <div id="demo-timeline" class="demo-section">
+                                    <div class="chart-container" id="timeline-chart">
+                                        <h6 class="text-center mb-3">Timeline de Desarrollo</h6>
+                                        <div class="d-flex align-items-center justify-content-center h-75">
+                                            <div class="text-center text-muted">
+                                                <i class="fas fa-clock fa-3x mb-3"></i>
+                                                <p>Timeline interactivo aparecerá aquí</p>
+                                                <button class="btn btn-primary" onclick="startTimelineDemo()">
+                                                    <i class="fas fa-play me-2"></i>
+                                                    Generar Timeline Demo
+                            </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-3">
+                                        <h6>Funcionalidades:</h6>
+                                        <ul class="list-unstyled">
+                                            <li><i class="fas fa-check text-success me-2"></i>Historial de commits</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Actividad por desarrollador</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Patrones temporales</li>
+                                            <li><i class="fas fa-check text-success me-2"></i>Hitos del proyecto</li>
+                                        </ul>
+                        </div>
+                    </div>
+                    
+                                <!-- Estado inicial -->
+                                <div id="demo-welcome" class="demo-section active">
+                                    <div class="demo-container d-flex align-items-center justify-content-center">
+                                        <div class="text-center">
+                                            <i class="fas fa-mouse-pointer fa-4x text-muted mb-4"></i>
+                                            <h4 class="text-muted">¡Explora las funcionalidades!</h4>
+                                            <p class="text-muted mb-4">
+                                                Haz clic en cualquiera de las tarjetas de arriba para ver una demostración interactiva
+                                            </p>
+                                            <div class="d-flex justify-content-center gap-3">
+                                                <button class="btn btn-outline-primary" onclick="showFeatureDemo('3d')">
+                                                    <i class="fas fa-cube me-2"></i>
+                                                    Ver 3D
+                                                </button>
+                                                <button class="btn btn-outline-success" onclick="showFeatureDemo('analysis')">
+                                                    <i class="fas fa-chart-line me-2"></i>
+                                                    Ver Análisis
+                                                </button>
+                                                <button class="btn btn-outline-info" onclick="showFeatureDemo('timeline')">
+                                                    <i class="fas fa-project-diagram me-2"></i>
+                                                    Ver Timeline
+                                                </button>
                             </div>
                         </div>
                     </div>
@@ -309,134 +508,248 @@
             </div>
         </div>
     </div>
+                </div>
+            </div>
+        </section>
 
-    <!-- Modal mejorado para detalles -->
-    <div class="modal fade" id="detailsModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title d-flex align-items-center">
-                        <i class="fas fa-info-circle text-primary me-2"></i>
-                        <span>Detalles del Elemento</span>
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                </div>
-                <div class="modal-body" id="modal-details-content">
-                    <!-- Contenido dinámico -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>
-                        Cerrar
-                    </button>
-                </div>
+        <!-- Call to Action -->
+        <section class="py-5 bg-primary text-white">
+            <div class="container text-center">
+                <h2 class="fw-bold mb-3">¿Listo para explorar tus repositorios?</h2>
+                <p class="lead mb-4">
+                    Accede a todas las funcionalidades, repositorios privados y límites de API más altos
+                </p>
+                <a class="btn btn-light btn-lg" href="/oauth2/authorization/github">
+                    <i class="fab fa-github me-2"></i>
+                    Comenzar con GitHub
+                </a>
             </div>
-        </div>
-    </div>
-
-    <!-- Toast notifications -->
-    <div class="toast-container position-fixed bottom-0 end-0 p-3">
-        <div id="notification-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <i class="fas fa-bell text-primary me-2"></i>
-                <strong class="me-auto">GitStellarPrism</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
-            </div>
-            <div class="toast-body">
-                <!-- Mensaje dinámico -->
-            </div>
-        </div>
+        </section>
     </div>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
-    <!-- Scripts de la aplicación -->
-    <script th:src="@{/js/visualization.js}"></script>
-    <script th:src="@{/js/timeline.js}"></script>
-    <script th:src="@{/js/eventHandler.js}"></script>
-    <script th:src="@{/js/uiController.js}"></script>
 
     <script>
-        // Variables globales
-        window.REALTIME_ENABLED = true; // Desde el servidor
+        let currentFeature = null;
+        let scene, camera, renderer;
         
-        // Funciones de utilidad UI
-        function showNotification(message, type = 'info') {
-            const toast = document.getElementById('notification-toast');
-            const toastBody = toast.querySelector('.toast-body');
-            const toastIcon = toast.querySelector('.toast-header i');
+        // Función para mostrar demo de funcionalidad
+        function showFeatureDemo(feature) {
+            // Limpiar estado anterior
+            document.querySelectorAll('.feature-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.remove('active');
+            });
             
-            // Configurar ícono según tipo
-            const icons = {
-                success: 'fas fa-check-circle text-success',
-                error: 'fas fa-exclamation-circle text-danger',
-                warning: 'fas fa-exclamation-triangle text-warning',
-                info: 'fas fa-info-circle text-primary'
+            // Activar nueva funcionalidad
+            document.querySelector(`[data-feature="${feature}"]`).classList.add('active');
+            document.getElementById(`demo-${feature}`).classList.add('active');
+            document.getElementById('demo-controls').style.display = 'block';
+            
+            // Actualizar título
+            const titles = {
+                '3d': '<i class="fas fa-cube me-2"></i>Demo: Visualización 3D',
+                'analysis': '<i class="fas fa-chart-line me-2"></i>Demo: Análisis Técnico',
+                'timeline': '<i class="fas fa-project-diagram me-2"></i>Demo: Timeline & Grafos'
             };
+            document.getElementById('demo-title').innerHTML = titles[feature];
             
-            toastIcon.className = icons[type] || icons.info;
-            toastBody.textContent = message;
+            currentFeature = feature;
             
-            const bsToast = new bootstrap.Toast(toast);
-            bsToast.show();
-        }
-        
-        function updateRealtimeStatus(connected) {
-            const statusEl = document.getElementById('realtime-status');
-            if (connected) {
-                statusEl.className = 'status-indicator status-success';
-                statusEl.innerHTML = '<i class="fas fa-circle"></i><span>Conectado</span>';
-            } else {
-                statusEl.className = 'status-indicator status-error';
-                statusEl.innerHTML = '<i class="fas fa-circle"></i><span>Desconectado</span>';
+            // Inicializar demo específico si es necesario
+            if (feature === '3d') {
+                init3DDemo();
+            } else if (feature === 'analysis') {
+                initAnalysisDemo();
+            } else if (feature === 'timeline') {
+                initTimelineDemo();
             }
         }
         
-        function showLoading(show = true) {
-            const loadingEl = document.getElementById('loading-indicator');
-            const emptyStateEl = document.getElementById('empty-state');
-            const controlsEl = document.getElementById('visualization-controls');
-            const filtersEl = document.getElementById('filters-section');
-            const infoPanelEl = document.getElementById('info-panel');
-            
-            if (show) {
-                loadingEl.style.display = 'block';
-                emptyStateEl.style.display = 'none';
-                controlsEl.style.display = 'none';
-                filtersEl.style.display = 'none';
-                infoPanelEl.style.display = 'none';
-            } else {
-                loadingEl.style.display = 'none';
-                controlsEl.style.display = 'block';
-                filtersEl.style.display = 'block';
-                infoPanelEl.style.display = 'block';
-            }
+        // Función para resetear demo
+        function resetDemo() {
+            document.querySelectorAll('.feature-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            document.querySelectorAll('.demo-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById('demo-welcome').classList.add('active');
+            document.getElementById('demo-title').innerHTML = '<i class="fas fa-cube me-2"></i>Selecciona una funcionalidad';
+            document.getElementById('demo-controls').style.display = 'none';
+            currentFeature = null;
         }
         
-        // Inicialización
+        // Función para scroll hasta demo
+        function scrollToDemo() {
+            document.getElementById('demo').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Función para cargar ejemplo
+        function loadExample(repo) {
+            document.getElementById('repoInput').value = repo;
+            showNotification(`Cargando ejemplo: ${repo}`, 'info');
+        }
+        
+        // Inicializar demo 3D
+        function init3DDemo() {
+            const container = document.getElementById('threejs-container');
+            if (!container || container.querySelector('canvas')) return;
+            
+            // Configuración básica de Three.js para demo
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, container.offsetWidth / container.offsetHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.offsetWidth, container.offsetHeight);
+            renderer.setClearColor(0x000000);
+            container.innerHTML = '';
+            container.appendChild(renderer.domElement);
+            
+            // Añadir algunos objetos de demo
+            const geometry = new THREE.BoxGeometry();
+            const material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
+            const cube = new THREE.Mesh(geometry, material);
+            scene.add(cube);
+            
+            camera.position.z = 5;
+            
+            // Animación simple
+            function animate() {
+                requestAnimationFrame(animate);
+                cube.rotation.x += 0.01;
+                cube.rotation.y += 0.01;
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+        
+        // Inicializar demo 3D con botón
+        function start3DDemo() {
+            init3DDemo();
+        }
+        
+        // Inicializar demo de análisis
+        function initAnalysisDemo() {
+            // Crear gráfico de ejemplo con D3.js
+            createDemoChart();
+        }
+        
+        // Inicializar demo de timeline
+        function initTimelineDemo() {
+            // Preparar contenedor para timeline
+        }
+        
+        // Función para crear gráfico demo
+        function createDemoChart() {
+            const data = [
+                { language: 'JavaScript', percentage: 45, color: '#f1e05a' },
+                { language: 'TypeScript', percentage: 25, color: '#2b7489' },
+                { language: 'Python', percentage: 15, color: '#3572A5' },
+                { language: 'CSS', percentage: 10, color: '#563d7c' },
+                { language: 'HTML', percentage: 5, color: '#e34c26' }
+            ];
+            
+            const container = document.getElementById('language-chart');
+            if (!container) return;
+            
+            container.innerHTML = '<h6 class="text-center mb-3">Distribución de Lenguajes</h6>';
+            
+            data.forEach(item => {
+                const bar = document.createElement('div');
+                bar.className = 'mb-2';
+                bar.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small">${item.language}</span>
+                        <span class="small">${item.percentage}%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div class="progress-bar" style="width: ${item.percentage}%; background-color: ${item.color}"></div>
+                    </div>
+                `;
+                container.appendChild(bar);
+            });
+        }
+        
+        // Función para iniciar timeline demo
+        function startTimelineDemo() {
+            const container = document.getElementById('timeline-chart');
+            container.innerHTML = `
+                <h6 class="text-center mb-3">Timeline de Desarrollo</h6>
+                <div class="timeline-demo">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Timeline demo cargado - Funcionalidad disponible con autenticación
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Función para mostrar notificaciones
+        function showNotification(message, type = 'info') {
+            const alertClass = type === 'error' ? 'alert-danger' : 
+                              type === 'success' ? 'alert-success' : 
+                              type === 'warning' ? 'alert-warning' : 'alert-info';
+            
+            const notification = document.createElement('div');
+            notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+            notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 300px;';
+            notification.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 5000);
+        }
+        
+        // Manejar formulario de demo
         document.addEventListener('DOMContentLoaded', function() {
-            // Verificar estado de tiempo real
-            checkRealtimeStatus();
+            const form = document.getElementById('demoForm');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const repo = document.getElementById('repoInput').value.trim();
+                    if (repo) {
+                        showNotification(`Analizando ${repo}... (Demo mode)`, 'info');
+                        // En una implementación real, aquí se haría la llamada a la API
+                        setTimeout(() => {
+                            showNotification('Demo completado. Para análisis completo, inicia sesión.', 'warning');
+                        }, 2000);
+                    }
+                });
+            }
             
-            // Inicializar visualización
-            if (typeof initVisualization === 'function') {
-                initVisualization();
+            // Navegación por teclado para las tarjetas
+            document.querySelectorAll('.feature-card').forEach(card => {
+                card.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        const feature = this.getAttribute('data-feature');
+                        showFeatureDemo(feature);
+                    }
+                });
+            });
+            
+            // Redirigir si está autenticado
+            if (document.querySelector('[th\\:if="${isAuthenticated}"]')) {
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 2000);
             }
             
             // Mostrar notificación de bienvenida
             setTimeout(() => {
-                showNotification('¡Bienvenido a GitStellarPrism! Explora repositorios de GitHub en 3D.', 'success');
+                showNotification('¡Bienvenido a GitStellarPrism! Explora las funcionalidades haciendo clic en las tarjetas.', 'info');
             }, 1000);
         });
-        
-        // Función para verificar estado de conexión
-        function checkRealtimeStatus() {
-            // Simular verificación de conexión
-            setTimeout(() => {
-                updateRealtimeStatus(true);
-            }, 2000);
-        }
     </script>
 </body>
 </html> 

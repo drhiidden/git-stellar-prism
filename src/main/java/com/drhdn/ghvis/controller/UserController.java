@@ -2,6 +2,7 @@ package com.drhdn.ghvis.controller;
 
 import com.drhdn.ghvis.service.GithubService;
 import com.drhdn.ghvis.service.OAuth2UserService;
+import com.drhdn.ghvis.service.UserRepositoryCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -27,6 +28,7 @@ public class UserController {
 
     private final OAuth2UserService oAuth2UserService;
     private final GithubService githubService;
+    private final UserRepositoryCacheService userRepositoryCacheService;
 
     /**
      * Obtiene la información básica del usuario autenticado.
@@ -84,7 +86,7 @@ public class UserController {
     }
 
     /**
-     * Obtiene los repositorios del usuario autenticado.
+     * Obtiene los repositorios del usuario autenticado (con caché).
      */
     @GetMapping(value = "/repositories", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<Object> getUserRepositories(Principal principal) {
@@ -92,11 +94,48 @@ public class UserController {
             return Mono.just(Map.of("error", "Usuario no autenticado"));
         }
         
-        return githubService.getUserRepositories(principal)
+        return userRepositoryCacheService.getUserRepositories(principal)
             .collectList()
             .cast(Object.class)
-            .doOnNext(repos -> log.debug("Obtenidos repositorios para el usuario"))
+            .doOnNext(repos -> log.debug("Obtenidos repositorios para el usuario (con caché)"))
             .doOnError(error -> log.error("Error obteniendo repositorios del usuario: {}", error.getMessage()))
             .onErrorReturn(Map.of("error", "Error obteniendo repositorios"));
+    }
+
+    /**
+     * Obtiene los repositorios del usuario con información detallada de tecnologías (con caché).
+     */
+    @GetMapping(value = "/repositories/detailed", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<Object> getUserRepositoriesDetailed(Principal principal) {
+        if (principal == null) {
+            return Mono.just(Map.of("error", "Usuario no autenticado"));
+        }
+        
+        return userRepositoryCacheService.getUserRepositoriesDetailed(principal)
+            .collectList()
+            .cast(Object.class)
+            .doOnNext(repos -> log.debug("Obtenidos repositorios detallados para el usuario (con caché)"))
+            .doOnError(error -> log.error("Error obteniendo repositorios detallados: {}", error.getMessage()))
+            .onErrorReturn(Map.of("error", "Error obteniendo repositorios detallados"));
+    }
+
+    /**
+     * Obtiene repositorios sin caché - para forzar actualización.
+     */
+    @GetMapping(value = "/repositories/refresh", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<Object> refreshUserRepositories(Principal principal) {
+        if (principal == null) {
+            return Mono.just(Map.of("error", "Usuario no autenticado"));
+        }
+        
+        // Limpiar caché del usuario primero
+        userRepositoryCacheService.clearUserCache(principal.getName());
+        
+        return userRepositoryCacheService.getUserRepositoriesDetailed(principal)
+            .collectList()
+            .cast(Object.class)
+            .doOnNext(repos -> log.debug("Repositorios refrescados para el usuario"))
+            .doOnError(error -> log.error("Error refrescando repositorios: {}", error.getMessage()))
+            .onErrorReturn(Map.of("error", "Error refrescando repositorios"));
     }
 } 
