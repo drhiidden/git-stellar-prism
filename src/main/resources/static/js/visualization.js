@@ -14,20 +14,23 @@ let infoTooltip;
 
 // Configuración
 const config = {
-    nodeSize: 6,
+    nodeSize: 8, // Nodos más grandes
     nodeColors: {
-        commit: 0x28a745,
-        merge: 0x007bff,
-        branch: 0xffc107,
-        tag: 0xdc3545,
-        head: 0x6f42c1
+        commit: 0x28a745,      // Verde para commits normales
+        merge: 0x007bff,       // Azul para merges
+        branch: 0xffc107,      // Amarillo para branches
+        tag: 0xdc3545,         // Rojo para tags
+        head: 0x6f42c1,        // Púrpura para HEAD
+        recent: 0x17a2b8,      // Cyan para commits recientes
+        old: 0x6c757d          // Gris para commits antiguos
     },
     backgroundColor: 0x1a1a1a,
     gridColor: 0x333333,
-    connectionColor: 0x666666,
-    branchSpacing: 20,
-    commitSpacing: 15,
-    animationSpeed: 0.002
+    connectionColor: 0x00d4ff,  // Cyan más brillante para conexiones
+    branchSpacing: 25,          // Más espaciado
+    commitSpacing: 20,          // Más espaciado
+    animationSpeed: 0.002,
+    glowIntensity: 0.5         // Intensidad del glow
 };
 
 // Variables para git graph
@@ -36,6 +39,711 @@ let gitGraph = {
     commitPositions: new Map(),
     maxBranchLevel: 0
 };
+
+/**
+ * ======================================
+ * SISTEMA DE VISTAS ALTERNAS CON PAGINACIÓN
+ * ======================================
+ */
+
+// Namespace para evitar conflictos de variables globales
+window.ViewSystem = window.ViewSystem || {
+    currentView: '3d',
+    timelineCommits: [],
+    currentPage: 1,
+    commitsPerPage: 30, // Aumentar a 30 por página para aprovechar el espacio
+    totalCommits: 0
+};
+
+/**
+ * Cambia entre vistas (3D y Timeline)
+ */
+function switchToView(viewType) {
+    console.log(`🔄 Cambiando a vista: ${viewType}`);
+    
+    const view3d = document.getElementById('view-3d');
+    const viewTimeline = document.getElementById('view-timeline');
+    const btn3d = document.getElementById('btn-view-3d');
+    const btnTimeline = document.getElementById('btn-view-timeline');
+    
+    if (!view3d || !viewTimeline || !btn3d || !btnTimeline) {
+        console.error('❌ Elementos de vista no encontrados');
+        return;
+    }
+    
+    // Actualizar vista actual
+    window.ViewSystem.currentView = viewType;
+    
+    // Ocultar todas las vistas
+    view3d.classList.remove('active');
+    viewTimeline.classList.remove('active');
+    
+    // Remover clases activas de botones
+    btn3d.classList.remove('active');
+    btn3d.classList.add('btn-outline-primary');
+    btn3d.classList.remove('btn-primary');
+    
+    btnTimeline.classList.remove('active');
+    btnTimeline.classList.add('btn-outline-primary');
+    btnTimeline.classList.remove('btn-primary');
+    
+    // Mostrar vista seleccionada y actualizar botón
+    if (viewType === '3d') {
+        view3d.classList.add('active');
+        btn3d.classList.add('active', 'btn-primary');
+        btn3d.classList.remove('btn-outline-primary');
+        console.log('✅ Vista 3D activada');
+    } else if (viewType === 'timeline') {
+        viewTimeline.classList.add('active');
+        btnTimeline.classList.add('active', 'btn-primary');
+        btnTimeline.classList.remove('btn-outline-primary');
+        
+        // Si hay commits, actualizar el timeline
+        if (window.ViewSystem.timelineCommits.length > 0) {
+            updateTimelineFullView(window.ViewSystem.timelineCommits);
+        }
+        console.log('✅ Vista Timeline activada');
+    }
+    
+    // Mostrar/ocultar controles contextuales
+    const controls3d = document.querySelectorAll('.view-controls-3d');
+    const controlsTimeline = document.querySelectorAll('.view-controls-timeline');
+    
+    controls3d.forEach(control => {
+        control.style.display = viewType === '3d' ? 'flex' : 'none';
+    });
+    
+    controlsTimeline.forEach(control => {
+        control.style.display = viewType === 'timeline' ? 'flex' : 'none';
+    });
+}
+
+/**
+ * Optimiza automáticamente la cantidad de commits por página según el espacio disponible
+ */
+function optimizeCommitsPerPage() {
+    const viewportHeight = window.innerHeight;
+    const availableHeight = viewportHeight - 180; // Reducir overhead para mejor aprovechamiento
+    
+    // Calcular commits que caben según la altura disponible
+    // Cada commit ocupa aproximadamente 90px (incluyendo padding y margin optimizado)
+    const estimatedCommitHeight = 90;
+    const optimalCommitsPerPage = Math.floor(availableHeight / estimatedCommitHeight);
+    
+    // Establecer un rango razonable más amplio
+    const minCommits = 20;  // Aumentar mínimo
+    const maxCommits = 100; // Reducir máximo para mejor rendimiento
+    const calculatedCommits = Math.max(minCommits, Math.min(maxCommits, optimalCommitsPerPage));
+    
+    // Solo actualizar si es significativamente diferente (evitar re-renderizados constantes)
+    const currentCommits = window.ViewSystem.commitsPerPage;
+    const difference = Math.abs(calculatedCommits - currentCommits);
+    
+    if (difference > 10) { // Aumentar umbral para evitar re-renderizados constantes
+        window.ViewSystem.commitsPerPage = calculatedCommits;
+        console.log(`📏 Optimización automática: ${calculatedCommits} commits por página (altura: ${viewportHeight}px)`);
+        
+        // NO re-renderizar automáticamente para evitar saltos de scroll
+        // La paginación se ajustará en la próxima acción del usuario
+    }
+}
+
+/**
+ * Actualiza el timeline completo con paginación
+ */
+function updateTimelineFullView(commits) {
+    console.log('🔄 Actualizando timeline completo con', commits?.length, 'commits');
+    
+    if (!commits || commits.length === 0) {
+        showEmptyTimelineState();
+        return;
+    }
+    
+    // Verificar si ya tenemos estos commits para evitar re-renderizados innecesarios
+    const currentCommitHashes = window.ViewSystem.timelineCommits.map(c => c.hash).join(',');
+    const newCommitHashes = commits.map(c => c.hash).join(',');
+    
+    if (currentCommitHashes === newCommitHashes && window.ViewSystem.timelineCommits.length > 0) {
+        console.log('⏭️ Los commits son idénticos, omitiendo actualización');
+        return;
+    }
+    
+    // Preservar página actual si es posible
+    const currentPage = window.ViewSystem.currentPage || 1;
+    
+    // Optimizar automáticamente la paginación según el espacio disponible (solo una vez)
+    if (window.ViewSystem.commitsPerPage === 30) { // Solo optimizar si está en valor por defecto
+        optimizeCommitsPerPage();
+    }
+    
+    // Guardar commits y configurar paginación
+    window.ViewSystem.timelineCommits = [...commits];
+    window.ViewSystem.totalCommits = commits.length;
+    
+    // Ordenar commits por fecha (más reciente primero)
+    window.ViewSystem.timelineCommits.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    // Mantener página actual si es válida, sino ir a la primera
+    const totalPages = Math.ceil(window.ViewSystem.totalCommits / window.ViewSystem.commitsPerPage);
+    window.ViewSystem.currentPage = currentPage <= totalPages ? currentPage : 1;
+    
+    renderTimelinePage();
+    updateTimelineStats();
+    
+    // Ocultar estado vacío
+    const emptyState = document.getElementById('timeline-empty-state-full');
+    if (emptyState) {
+        emptyState.style.display = 'none';
+    }
+    
+    // Mostrar footer de estadísticas
+    const statsFooter = document.querySelector('.timeline-stats-footer');
+    if (statsFooter) {
+        statsFooter.style.display = 'block';
+    }
+    
+    console.log('✅ Timeline completo actualizado');
+}
+
+/**
+ * Renderiza una página específica del timeline
+ */
+function renderTimelinePage() {
+    const container = document.getElementById('timeline-container-full');
+    if (!container) {
+        console.error('❌ Contenedor del timeline no encontrado');
+        return;
+    }
+    
+    // Calcular índices de la página actual
+    const startIndex = (window.ViewSystem.currentPage - 1) * window.ViewSystem.commitsPerPage;
+    const endIndex = Math.min(startIndex + window.ViewSystem.commitsPerPage, window.ViewSystem.totalCommits);
+    const pageCommits = window.ViewSystem.timelineCommits.slice(startIndex, endIndex);
+    
+    // Limpiar contenido anterior
+    container.innerHTML = '';
+    
+    // Crear header del timeline
+    const header = document.createElement('div');
+    header.className = 'timeline-header d-flex justify-content-between align-items-center p-3 border-bottom';
+    header.innerHTML = `
+        <div>
+            <h4 class="mb-1">
+                <i class="fas fa-clock me-2 text-primary"></i>
+                Timeline Completo (${window.ViewSystem.totalCommits} commits)
+            </h4>
+            <small class="text-muted">
+                Mostrando ${startIndex + 1}-${endIndex} de ${window.ViewSystem.totalCommits} commits
+            </small>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary btn-sm" onclick="refreshTimeline()">
+                <i class="fas fa-sync-alt"></i>
+            </button>
+            <button class="btn btn-outline-info btn-sm" onclick="exportTimelineData()">
+                <i class="fas fa-download"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(header);
+    
+    // Crear contenedor de commits optimizado para máximo espacio
+    const commitsContainer = document.createElement('div');
+    commitsContainer.className = 'timeline-commits-container';
+    // Optimizar el uso del espacio disponible
+    commitsContainer.style.minHeight = '60vh'; // Usar viewport height para mejor aprovechamiento
+    commitsContainer.style.maxHeight = '80vh'; // Evitar que se extienda demasiado
+    commitsContainer.style.overflowY = 'auto';
+    commitsContainer.style.padding = '12px 16px'; // Reducir padding vertical
+    commitsContainer.style.flex = '1 1 auto';
+    commitsContainer.style.height = 'auto';
+    // Mejorar el scroll
+    commitsContainer.style.scrollBehavior = 'smooth';
+    commitsContainer.style.overscrollBehavior = 'contain';
+    
+    // Renderizar commits de la página actual
+    pageCommits.forEach((commit, index) => {
+        const commitElement = createTimelineCommitElement(commit, startIndex + index);
+        commitsContainer.appendChild(commitElement);
+    });
+    
+    container.appendChild(commitsContainer);
+    
+    // Crear controles de paginación
+    createPaginationControls(container);
+    
+    console.log(`📄 Página ${currentPage} renderizada con ${pageCommits.length} commits`);
+}
+
+/**
+ * Crea elemento HTML para un commit en el timeline
+ */
+function createTimelineCommitElement(commit, globalIndex) {
+    const commitDate = new Date(commit.timestamp);
+    const now = new Date();
+    const diffTime = Math.abs(now - commitDate);
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    let timeAgo = '';
+    if (diffDays === 0) {
+        const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+        timeAgo = diffHours === 0 ? 'Hace unos minutos' : `Hace ${diffHours}h`;
+    } else if (diffDays === 1) {
+        timeAgo = 'Ayer';
+    } else if (diffDays < 7) {
+        timeAgo = `Hace ${diffDays} días`;
+    } else if (diffDays < 30) {
+        timeAgo = `Hace ${Math.floor(diffDays / 7)} semanas`;
+    } else {
+        timeAgo = `Hace ${Math.floor(diffDays / 30)} meses`;
+    }
+    
+    const commitElement = document.createElement('div');
+    commitElement.className = 'timeline-commit-item d-flex p-2 mb-2 bg-dark bg-opacity-25 rounded'; // Reducir padding y margin
+    commitElement.style.cursor = 'pointer';
+    commitElement.style.transition = 'all 0.2s ease';
+    commitElement.style.minHeight = '70px'; // Altura mínima fija para consistencia
+    commitElement.style.alignItems = 'center'; // Centrar contenido verticalmente
+    
+    // Agregar efecto hover
+    commitElement.addEventListener('mouseenter', function() {
+        this.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+        this.style.transform = 'translateX(5px)';
+    });
+    
+    commitElement.addEventListener('mouseleave', function() {
+        this.style.backgroundColor = 'rgba(0, 0, 0, 0.25)';
+        this.style.transform = 'translateX(0)';
+    });
+    
+    // Click para resaltar en vista 3D
+    commitElement.addEventListener('click', function() {
+        if (typeof highlightCommitIn3D === 'function') {
+            highlightCommitIn3D(commit.hash);
+        }
+        // Cambiar a vista 3D para mostrar el commit resaltado
+        switchToView('3d');
+    });
+    
+    commitElement.innerHTML = `
+        <div class="timeline-commit-index d-flex align-items-center justify-content-center me-2" 
+             style="min-width: 35px; height: 35px; background: linear-gradient(135deg, #007bff, #0056b3); 
+                    border-radius: 8px; color: white; font-weight: bold; font-size: 12px; flex-shrink: 0;">
+            ${globalIndex + 1}
+        </div>
+        <div class="timeline-commit-content flex-grow-1 d-flex justify-content-between">
+            <div class="timeline-commit-main" style="flex: 1; min-width: 0;">
+                <div class="timeline-commit-message mb-1">
+                    <strong class="d-block text-truncate" style="color: #ffffff; font-size: 14px; line-height: 1.3;">
+                        ${commit.message.length > 70 ? commit.message.substring(0, 70) + '...' : commit.message}
+                    </strong>
+                    <div class="d-flex align-items-center gap-2 text-muted" style="font-size: 11px;">
+                        <span class="d-flex align-items-center">
+                            <i class="fas fa-user me-1" style="width: 10px;"></i>
+                            <span class="text-truncate" style="max-width: 120px;">${commit.author?.name || 'Desconocido'}</span>
+                        </span>
+                        <span class="d-flex align-items-center">
+                            <i class="fas fa-hashtag me-1" style="width: 10px;"></i>
+                            <code style="background: rgba(255,255,255,0.1); padding: 1px 4px; border-radius: 2px; font-size: 10px;">
+                                ${commit.hash.substring(0, 7)}
+                            </code>
+                        </span>
+                        ${commit.branch ? `
+                            <span class="d-flex align-items-center">
+                                <i class="fas fa-code-branch me-1" style="width: 10px;"></i>
+                                <span class="text-truncate" style="max-width: 80px;">${commit.branch}</span>
+                            </span>
+                        ` : ''}
+                        ${commit.stats ? `
+                            <span class="text-success">+${commit.stats.additions || 0}</span>
+                            <span class="text-danger">-${commit.stats.deletions || 0}</span>
+                        ` : ''}
+                    </div>
+                </div>
+            </div>
+            <div class="timeline-commit-time text-end" style="flex-shrink: 0; min-width: 70px;">
+                <small class="text-muted d-block" style="font-size: 11px;">${timeAgo}</small>
+                <small class="text-muted" style="font-size: 10px;">${commitDate.toLocaleDateString('es', { month: 'short', day: 'numeric' })}</small>
+            </div>
+        </div>
+    `;
+    
+    return commitElement;
+}
+
+/**
+ * Crea controles de paginación
+ */
+function createPaginationControls(container) {
+    const totalPages = Math.ceil(window.ViewSystem.totalCommits / window.ViewSystem.commitsPerPage);
+    
+    if (totalPages <= 1) return; // No mostrar paginación si solo hay una página
+    
+    const paginationContainer = document.createElement('div');
+    paginationContainer.className = 'timeline-pagination d-flex justify-content-between align-items-center p-2 border-top bg-dark bg-opacity-10';
+    
+    // Información de página más compacta
+    const pageInfo = document.createElement('div');
+    pageInfo.className = 'timeline-page-info';
+    pageInfo.innerHTML = `
+        <small class="text-muted" style="font-size: 11px;">
+            ${window.ViewSystem.currentPage}/${totalPages} 
+            <span class="d-none d-sm-inline">(${window.ViewSystem.commitsPerPage}/página)</span>
+        </small>
+    `;
+    
+    // Controles de navegación más compactos
+    const navControls = document.createElement('div');
+    navControls.className = 'timeline-nav-controls d-flex gap-1 align-items-center';
+    
+    // Botón anterior
+    const prevBtn = document.createElement('button');
+    prevBtn.className = `btn btn-outline-primary btn-sm ${window.ViewSystem.currentPage === 1 ? 'disabled' : ''}`;
+    prevBtn.innerHTML = '<i class="fas fa-chevron-left"></i><span class="d-none d-md-inline"> Ant</span>';
+    prevBtn.disabled = window.ViewSystem.currentPage === 1;
+    prevBtn.style.fontSize = '11px';
+    prevBtn.addEventListener('click', () => goToPage(window.ViewSystem.currentPage - 1));
+    
+    // Input de página más pequeño
+    const pageInput = document.createElement('input');
+    pageInput.type = 'number';
+    pageInput.min = '1';
+    pageInput.max = totalPages.toString();
+    pageInput.value = window.ViewSystem.currentPage.toString();
+    pageInput.className = 'form-control form-control-sm';
+    pageInput.style.width = '50px';
+    pageInput.style.fontSize = '11px';
+    pageInput.style.textAlign = 'center';
+    pageInput.addEventListener('change', (e) => {
+        const page = parseInt(e.target.value);
+        if (page >= 1 && page <= totalPages) {
+            goToPage(page);
+        }
+    });
+    
+    // Botón siguiente
+    const nextBtn = document.createElement('button');
+    nextBtn.className = `btn btn-outline-primary btn-sm ${window.ViewSystem.currentPage === totalPages ? 'disabled' : ''}`;
+    nextBtn.innerHTML = '<span class="d-none d-md-inline">Sig </span><i class="fas fa-chevron-right"></i>';
+    nextBtn.disabled = window.ViewSystem.currentPage === totalPages;
+    nextBtn.style.fontSize = '11px';
+    nextBtn.addEventListener('click', () => goToPage(window.ViewSystem.currentPage + 1));
+    
+    // Selector de commits por página más compacto
+    const perPageSelect = document.createElement('select');
+    perPageSelect.className = 'form-select form-select-sm ms-2';
+    perPageSelect.style.width = '70px';
+    perPageSelect.style.fontSize = '11px';
+    perPageSelect.innerHTML = `
+        <option value="20" ${window.ViewSystem.commitsPerPage === 20 ? 'selected' : ''}>20</option>
+        <option value="30" ${window.ViewSystem.commitsPerPage === 30 ? 'selected' : ''}>30</option>
+        <option value="50" ${window.ViewSystem.commitsPerPage === 50 ? 'selected' : ''}>50</option>
+        <option value="100" ${window.ViewSystem.commitsPerPage === 100 ? 'selected' : ''}>100</option>
+    `;
+    perPageSelect.addEventListener('change', (e) => {
+        window.ViewSystem.commitsPerPage = parseInt(e.target.value);
+        window.ViewSystem.currentPage = 1; // Resetear a primera página
+        renderTimelinePage();
+    });
+    
+    navControls.appendChild(prevBtn);
+    navControls.appendChild(pageInput);
+    navControls.appendChild(nextBtn);
+    navControls.appendChild(perPageSelect);
+    
+    paginationContainer.appendChild(pageInfo);
+    paginationContainer.appendChild(navControls);
+    
+    container.appendChild(paginationContainer);
+}
+
+/**
+ * Navega a una página específica
+ */
+function goToPage(page) {
+    const totalPages = Math.ceil(window.ViewSystem.totalCommits / window.ViewSystem.commitsPerPage);
+    
+    if (page < 1 || page > totalPages) {
+        console.warn(`⚠️ Página ${page} fuera de rango (1-${totalPages})`);
+        return;
+    }
+    
+    // Guardar posición actual del scroll para preservar experiencia UX
+    const container = document.getElementById('timeline-container-full');
+    const currentScrollTop = container ? container.scrollTop : 0;
+    
+    window.ViewSystem.currentPage = page;
+    renderTimelinePage();
+    
+    // Solo hacer scroll al top si es una navegación manual de página (no en re-renderizados)
+    // Y solo si realmente cambió la página
+    if (container && page !== window.ViewSystem.previousPage) {
+        // Scroll suave al header en lugar de scroll abrupto
+        const header = container.querySelector('.timeline-header');
+        if (header) {
+            header.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+    
+    // Guardar página anterior para comparación
+    window.ViewSystem.previousPage = page;
+    
+    console.log(`📄 Navegado a página ${page}`);
+}
+
+/**
+ * Muestra estado vacío del timeline
+ */
+function showEmptyTimelineState() {
+    const container = document.getElementById('timeline-container-full');
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const emptyState = document.getElementById('timeline-empty-state-full');
+    if (emptyState) {
+        emptyState.style.display = 'block';
+    }
+    
+    const statsFooter = document.querySelector('.timeline-stats-footer');
+    if (statsFooter) {
+        statsFooter.style.display = 'none';
+    }
+}
+
+/**
+ * Actualiza las estadísticas del timeline
+ */
+function updateTimelineStats() {
+    const statsElement = document.getElementById('timeline-stats');
+    if (!statsElement || !window.ViewSystem.timelineCommits.length) return;
+    
+    // Calcular estadísticas
+    const authors = [...new Set(window.ViewSystem.timelineCommits.map(c => c.author?.name).filter(Boolean))];
+    const dateRange = {
+        oldest: new Date(Math.min(...window.ViewSystem.timelineCommits.map(c => new Date(c.timestamp)))),
+        newest: new Date(Math.max(...window.ViewSystem.timelineCommits.map(c => new Date(c.timestamp))))
+    };
+    
+    const totalAdditions = window.ViewSystem.timelineCommits.reduce((sum, c) => sum + (c.stats?.additions || 0), 0);
+    const totalDeletions = window.ViewSystem.timelineCommits.reduce((sum, c) => sum + (c.stats?.deletions || 0), 0);
+    const totalFiles = window.ViewSystem.timelineCommits.reduce((sum, c) => sum + (c.stats?.filesChanged || 0), 0);
+    
+    const statsHtml = `
+        <div class="row g-2 text-center">
+            <div class="col-2">
+                <div class="d-flex flex-column">
+                    <strong class="text-primary">${window.ViewSystem.totalCommits}</strong>
+                    <small class="text-muted">Commits</small>
+                </div>
+            </div>
+            <div class="col-2">
+                <div class="d-flex flex-column">
+                    <strong class="text-info">${authors.length}</strong>
+                    <small class="text-muted">Autores</small>
+                </div>
+            </div>
+            <div class="col-2">
+                <div class="d-flex flex-column">
+                    <strong class="text-success">+${totalAdditions}</strong>
+                    <small class="text-muted">Líneas</small>
+                </div>
+            </div>
+            <div class="col-2">
+                <div class="d-flex flex-column">
+                    <strong class="text-danger">-${totalDeletions}</strong>
+                    <small class="text-muted">Líneas</small>
+                </div>
+            </div>
+            <div class="col-2">
+                <div class="d-flex flex-column">
+                    <strong class="text-warning">${totalFiles}</strong>
+                    <small class="text-muted">Archivos</small>
+                </div>
+            </div>
+            <div class="col-2">
+                <div class="d-flex flex-column">
+                    <strong class="text-secondary">
+                        ${Math.ceil((dateRange.newest - dateRange.oldest) / (1000 * 60 * 60 * 24))}
+                    </strong>
+                    <small class="text-muted">Días</small>
+                </div>
+            </div>
+        </div>
+        <hr class="my-2">
+        <div class="text-center">
+            <small class="text-muted">
+                <i class="fas fa-calendar me-1"></i>
+                Desde ${dateRange.oldest.toLocaleDateString()} hasta ${dateRange.newest.toLocaleDateString()}
+            </small>
+        </div>
+    `;
+    
+    statsElement.innerHTML = statsHtml;
+}
+
+/**
+ * Funciones auxiliares para el timeline
+ */
+function refreshTimeline() {
+    if (window.ViewSystem.timelineCommits.length > 0) {
+        console.log('🔄 Refrescando timeline...');
+        // Preservar posición de scroll actual
+        const container = document.getElementById('timeline-container-full');
+        const scrollTop = container ? container.scrollTop : 0;
+        
+        renderTimelinePage();
+        updateTimelineStats();
+        
+        // Restaurar posición de scroll si es válida
+        if (container && scrollTop > 0) {
+            setTimeout(() => {
+                container.scrollTop = scrollTop;
+            }, 50);
+        }
+        
+        showNotification('Timeline actualizado', 'success');
+    } else {
+        showNotification('No hay commits para actualizar', 'warning');
+    }
+}
+
+/**
+ * Preserva la posición de scroll durante operaciones del timeline
+ */
+function preserveScrollPosition(callback) {
+    const container = document.getElementById('timeline-container-full');
+    const scrollTop = container ? container.scrollTop : 0;
+    
+    if (typeof callback === 'function') {
+        callback();
+    }
+    
+    // Restaurar scroll después de un breve delay para permitir renderizado
+    if (container && scrollTop > 0) {
+        setTimeout(() => {
+            container.scrollTop = scrollTop;
+        }, 100);
+    }
+}
+
+function debugTimeline() {
+    console.log('🐛 Debug del Timeline:');
+    console.log('Current View:', window.ViewSystem.currentView);
+    console.log('Timeline Commits:', window.ViewSystem.timelineCommits.length);
+    console.log('Current Page:', window.ViewSystem.currentPage);
+    console.log('Commits Per Page:', window.ViewSystem.commitsPerPage);
+    console.log('Total Commits:', window.ViewSystem.totalCommits);
+    
+    // Mostrar en consola para debugging
+    window.timelineDebugInfo = {
+        currentView: window.ViewSystem.currentView,
+        timelineCommits: window.ViewSystem.timelineCommits.length,
+        currentPage: window.ViewSystem.currentPage,
+        commitsPerPage: window.ViewSystem.commitsPerPage,
+        totalCommits: window.ViewSystem.totalCommits,
+        totalPages: Math.ceil(window.ViewSystem.totalCommits / window.ViewSystem.commitsPerPage)
+    };
+    
+    showNotification('Info de debug enviada a consola', 'info');
+}
+
+function exportTimelineData() {
+    if (!window.ViewSystem.timelineCommits.length) {
+        showNotification('No hay datos para exportar', 'warning');
+        return;
+    }
+    
+    const data = {
+        repository: window.currentRepo || 'unknown',
+        exportDate: new Date().toISOString(),
+        totalCommits: window.ViewSystem.totalCommits,
+        commits: window.ViewSystem.timelineCommits.map(commit => ({
+            hash: commit.hash,
+            message: commit.message,
+            author: commit.author?.name,
+            date: commit.timestamp,
+            branch: commit.branch,
+            stats: commit.stats
+        }))
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `timeline-${window.currentRepo || 'repo'}-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showNotification('Timeline exportado exitosamente', 'success');
+}
+
+/**
+ * Escuchador de eventos para commits cargados
+ */
+window.addEventListener('commitsLoaded', (event) => {
+    console.log('📡 Evento commitsLoaded recibido:', event.detail);
+    
+    if (event.detail && event.detail.commits) {
+        // Actualizar timeline si estamos en esa vista
+        if (window.ViewSystem.currentView === 'timeline') {
+            updateTimelineFullView(event.detail.commits);
+        } else {
+            // Guardar commits para cuando cambien a vista timeline
+            window.ViewSystem.timelineCommits = [...event.detail.commits];
+            window.ViewSystem.totalCommits = event.detail.commits.length;
+        }
+    }
+});
+
+/**
+ * Funciones globales expuestas para debugging y compatibilidad
+ */
+window.switchToView = switchToView;
+window.updateTimelineFullView = updateTimelineFullView;
+window.currentView = () => window.ViewSystem.currentView;
+window.refreshTimeline = refreshTimeline;
+window.debugTimeline = debugTimeline;
+window.exportTimelineData = exportTimelineData;
+window.goToPage = goToPage;
+
+// Diagnóstico del sistema
+window.diagnoseSystem = function() {
+    console.log('🔍 Diagnóstico del Sistema de Vistas Alternas:');
+    console.log('==========================================');
+    console.log('Vista actual:', window.ViewSystem.currentView);
+    console.log('Commits en timeline:', window.ViewSystem.timelineCommits.length);
+    console.log('Página actual:', window.ViewSystem.currentPage);
+    console.log('Commits por página:', window.ViewSystem.commitsPerPage);
+    console.log('Total de commits:', window.ViewSystem.totalCommits);
+    console.log('Total de páginas:', Math.ceil(window.ViewSystem.totalCommits / window.ViewSystem.commitsPerPage));
+    
+    // Verificar elementos DOM
+    const elements = {
+        'view-3d': document.getElementById('view-3d'),
+        'view-timeline': document.getElementById('view-timeline'),
+        'btn-view-3d': document.getElementById('btn-view-3d'),
+        'btn-view-timeline': document.getElementById('btn-view-timeline'),
+        'timeline-container-full': document.getElementById('timeline-container-full')
+    };
+    
+    console.log('Elementos DOM:');
+    Object.entries(elements).forEach(([name, element]) => {
+        console.log(`  ${name}:`, element ? '✅ Encontrado' : '❌ No encontrado');
+    });
+    
+    return {
+        currentView: window.ViewSystem.currentView,
+        timelineCommits: window.ViewSystem.timelineCommits.length,
+        currentPage: window.ViewSystem.currentPage,
+        commitsPerPage: window.ViewSystem.commitsPerPage,
+        totalCommits: window.ViewSystem.totalCommits,
+        elements
+    };
+};
+
+console.log('✅ Sistema de Vistas Alternas con Paginación inicializado');
 
 /**
  * Inicializa la visualización 3D
@@ -236,11 +944,35 @@ function onMouseMove(event) {
             infoTooltip.style.display = 'block';
             infoTooltip.style.left = event.clientX + 10 + 'px';
             infoTooltip.style.top = event.clientY + 10 + 'px';
+            
+            // Efecto hover - hacer el nodo más brillante
+            if (object.material && object.material.emissive) {
+                // Guardar color original si no existe
+                if (!object.userData.originalEmissive) {
+                    object.userData.originalEmissive = object.material.emissive.clone();
+                }
+                // Hacer más brillante en hover
+                object.material.emissive.setHex(0x444444);
+                
+                // Cambiar cursor
+                document.body.style.cursor = 'pointer';
+            }
         } else {
             infoTooltip.style.display = 'none';
+            // Restaurar cursor
+            document.body.style.cursor = 'default';
         }
     } else {
         infoTooltip.style.display = 'none';
+        // Restaurar cursor
+        document.body.style.cursor = 'default';
+        
+        // Restaurar emisividad original de todos los nodos
+        nodes.forEach(node => {
+            if (node.material && node.material.emissive && node.userData.originalEmissive) {
+                node.material.emissive.copy(node.userData.originalEmissive);
+            }
+        });
     }
 }
 
@@ -512,6 +1244,16 @@ function loadCommits(repoUrl) {
                 return;
             }
             
+            // Guardar commits globalmente para acceso posterior
+            window.currentCommits = commits;
+            window.currentRepository = repoParam;
+            
+            // Disparar evento para notificar al sistema de vistas alternas
+            const commitsLoadedEvent = new CustomEvent('commitsLoaded', {
+                detail: { commits: commits, repository: repoParam, source: 'loadCommits' }
+            });
+            window.dispatchEvent(commitsLoadedEvent);
+            
             // Renderizar commits
             renderCommitsVisualization(commits);
             
@@ -519,6 +1261,10 @@ function loadCommits(repoUrl) {
             if (window.REALTIME_ENABLED) {
                 connectToEventStream(repoParam);
             }
+            
+            // Actualizar el timeline con los commits inmediatamente
+            updateTimelineWithCommits(commits);
+            console.log('✅ Timeline actualizado automáticamente');
             
             showSuccess(`Visualización cargada: ${commits.length} commits`);
         })
@@ -869,16 +1615,23 @@ function highlightCommitIn3D(commitHash) {
     });
     
     // Buscar y resaltar el commit específico
-    const targetNode = nodes.find(node => node.userData.hash === commitHash);
+    const targetNode = nodes.find(node => 
+        node.userData.hash === commitHash
+    );
+    
     if (targetNode) {
-        targetNode.material.emissive.setHex(0x444444);
-        targetNode.scale.set(1.5, 1.5, 1.5);
+        targetNode.material.emissive.setHex(0xffffff);
         
-        // Mover la cámara hacia el commit
-        const targetPosition = targetNode.position.clone();
-        camera.position.copy(targetPosition);
-        camera.position.z += 50;
-        camera.lookAt(targetPosition);
+        // Enfocar la cámara en el commit
+        if (controls) {
+            controls.target.copy(targetNode.position);
+            controls.update();
+        }
+        
+        // Mostrar información del commit
+        showElementInfo(targetNode.userData);
+    } else {
+        console.warn('⚠️ No se encontró nodo para commit:', commitHash);
     }
 }
 
@@ -939,12 +1692,13 @@ document.addEventListener('DOMContentLoaded', () => {
         // Inicializar visualización
         initVisualization();
         
-        // Inicializar timeline si D3 está disponible
-        if (typeof initTimeline === 'function' && typeof d3 !== 'undefined') {
-            initTimeline();
-        } else if (typeof initTimeline === 'function') {
-            console.warn('D3.js no disponible, timeline no se inicializará');
-        }
+        // Timeline D3.js deshabilitado - usando sistema de vistas alternas
+        console.log('📈 Timeline D3.js omitido - usando nuevo sistema de vistas alternas');
+        // if (typeof initTimeline === 'function' && typeof d3 !== 'undefined') {
+        //     initTimeline();
+        // } else if (typeof initTimeline === 'function') {
+        //     console.warn('D3.js no disponible, timeline no se inicializará');
+        // }
     }, 100);
     
     // Manejar envío del formulario
@@ -1038,7 +1792,7 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`- initTimeline función: ${typeof initTimeline === 'function' ? 'OK' : 'NULL'}`);
             console.log(`- renderTimeline función: ${typeof renderTimeline === 'function' ? 'OK' : 'NULL'}`);
             
-            const timelineContainer = document.getElementById('timeline-container');
+            const timelineContainer = document.getElementById('timeline-container-full');
             if (timelineContainer) {
                 console.log(`- Timeline container: OK (${timelineContainer.children.length} elementos)`);
             } else {
@@ -1147,7 +1901,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (timelineFullscreen) {
         timelineFullscreen.addEventListener('click', () => {
             console.log('🖥️ Pantalla completa timeline');
-            const timelineContainer = document.getElementById('timeline-container');
+            const timelineContainer = document.getElementById('timeline-container-full');
             if (timelineContainer) {
                 if (timelineContainer.requestFullscreen) {
                     timelineContainer.requestFullscreen();
@@ -1163,14 +1917,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Inicializar timeline
-    console.log('🕐 Inicializando timeline...');
-    if (typeof initTimeline === 'function') {
-        initTimeline();
-        console.log('✅ Timeline inicializado');
-    } else {
-        console.warn('⚠️ Función initTimeline no disponible');
-    }
+    // Timeline D3.js deshabilitado - usando sistema de vistas alternas
+    console.log('📈 Timeline D3.js omitido - usando sistema de vistas alternas en su lugar');
+    // console.log('🕐 Inicializando timeline...');
+    // if (typeof initTimeline === 'function') {
+    //     initTimeline();
+    //     console.log('✅ Timeline inicializado');
+    // } else {
+    //     console.warn('⚠️ Función initTimeline no disponible');
+    // }
 });
 
 /**
@@ -1325,13 +2080,44 @@ function createCommitNodeAdvanced(commit, index) {
         geometry = new THREE.SphereGeometry(config.nodeSize, 16, 16);
     }
 
+    // Determinar color basado en la edad del commit
+    let nodeColor = branch.color;
+    let nodeSize = config.nodeSize;
+    
+    // Commits más recientes son más brillantes y grandes
+    const commitDate = new Date(commit.timestamp);
+    const daysSinceCommit = (Date.now() - commitDate.getTime()) / (1000 * 60 * 60 * 24);
+    
+    if (daysSinceCommit < 7) {
+        // Commits de la última semana - más brillantes y grandes
+        nodeColor = config.nodeColors.recent;
+        nodeSize *= 1.3;
+    } else if (daysSinceCommit < 30) {
+        // Commits del último mes - normales
+        nodeColor = branch.color;
+    } else {
+        // Commits antiguos - más pequeños y grises
+        nodeColor = config.nodeColors.old;
+        nodeSize *= 0.8;
+    }
+    
+    // Actualizar geometría con el nuevo tamaño
+    if (commit.message && commit.message.toLowerCase().includes('merge')) {
+        geometry = new THREE.OctahedronGeometry(nodeSize * 1.2);
+    } else if (commit.message && commit.message.toLowerCase().includes('tag')) {
+        geometry = new THREE.ConeGeometry(nodeSize, nodeSize * 2, 6);
+    } else {
+        geometry = new THREE.SphereGeometry(nodeSize, 20, 20); // Más detallado
+    }
+
     // Material con efectos visuales mejorados
     const material = new THREE.MeshPhongMaterial({
-        color: branch.color,
-        shininess: 100,
-        transparent: false, // Cambiar a false para mejor visibilidad
-        opacity: 1.0,      // Opacidad completa
-        emissive: new THREE.Color(branch.color).multiplyScalar(0.1) // Añadir emisividad
+        color: nodeColor,
+        shininess: 150,
+        transparent: false,
+        opacity: 1.0,
+        emissive: new THREE.Color(nodeColor).multiplyScalar(0.15), // Más emisividad
+        specular: 0x222222 // Añadir especularidad
     });
 
     const commitNode = new THREE.Mesh(geometry, material);
@@ -1422,11 +2208,13 @@ function createConnection(fromPos, toPos, branchName) {
     }
     
     const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    
+    // Usar el color de conexión configurado para mejor visibilidad
     const material = new THREE.LineBasicMaterial({
-        color: branch.color,
-        linewidth: 2,
+        color: config.connectionColor, // Cyan brillante
+        linewidth: 3, // Líneas más gruesas
         transparent: true,
-        opacity: 0.7
+        opacity: 0.8 // Menos transparencia
     });
     
     return new THREE.Line(geometry, material);
@@ -1476,6 +2264,194 @@ function createTextLabel(text, color) {
     
     const geometry = new THREE.PlaneGeometry(20, 5);
     return new THREE.Mesh(geometry, material);
+}
+
+/**
+ * Actualiza el timeline con información de commits
+ */
+function updateTimelineWithCommits(commits) {
+    console.log('🔄 Actualizando timeline con', commits?.length, 'commits');
+    
+    // Buscar el contenedor correcto del sistema de vistas alternas
+    const timelineContainer = document.getElementById('timeline-container-full');
+    const emptyState = document.getElementById('timeline-empty-state-full');
+    
+    if (!timelineContainer) {
+        console.warn('⚠️ Timeline container no encontrado - delegando al sistema de vistas alternas');
+        // Disparar evento para que el sistema correcto lo maneje
+        if (commits && commits.length > 0) {
+            const commitsLoadedEvent = new CustomEvent('commitsLoaded', {
+                detail: { commits: commits, source: 'delegated' }
+            });
+            window.dispatchEvent(commitsLoadedEvent);
+        }
+        return;
+    }
+    
+    if (!commits || commits.length === 0) {
+        console.warn('⚠️ No hay commits para mostrar en timeline');
+        return;
+    }
+    
+    // Asegurar que el timeline sea visible
+    timelineContainer.style.display = 'block';
+    timelineContainer.style.visibility = 'visible';
+    
+    // Ocultar estado vacío
+    if (emptyState) {
+        emptyState.style.display = 'none';
+    }
+    
+    // Limpiar contenido anterior
+    const existingTimeline = timelineContainer.querySelector('.timeline-content');
+    if (existingTimeline) {
+        existingTimeline.remove();
+    }
+    
+    // Crear contenido del timeline
+    const timelineContent = document.createElement('div');
+    timelineContent.className = 'timeline-content';
+    
+    // Ordenar commits por fecha (más reciente primero)
+    const sortedCommits = [...commits].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    console.log('📊 Commits ordenados para timeline:', sortedCommits.length);
+    console.log('📄 Primer commit:', sortedCommits[0]);
+    
+    // Crear elementos del timeline - HTML con botón de toggle
+    const timelineHTML = `
+        <button class="timeline-toggle-btn" onclick="toggleTimeline()" title="Expandir/Colapsar Timeline">
+            <i class="fas fa-expand-alt"></i>
+            <span class="d-none d-sm-inline">Expandir</span>
+        </button>
+        <div class="timeline-header">
+            <h6>📊 Actividad reciente (${commits.length} commits)</h6>
+            <small>Últimos ${Math.min(commits.length, 10)} commits mostrados</small>
+        </div>
+        <div class="timeline-items">
+            ${sortedCommits.slice(0, 10).map((commit, index) => {
+                const commitDate = new Date(commit.timestamp);
+                const daysSince = Math.floor((Date.now() - commitDate.getTime()) / (1000 * 60 * 60 * 24));
+                
+                let timeAgo = '';
+                if (daysSince === 0) {
+                    timeAgo = 'Hoy';
+                } else if (daysSince === 1) {
+                    timeAgo = 'Ayer';
+                } else if (daysSince < 7) {
+                    timeAgo = `${daysSince} días`;
+                } else if (daysSince < 30) {
+                    timeAgo = `${Math.floor(daysSince / 7)} semanas`;
+                } else {
+                    timeAgo = `${Math.floor(daysSince / 30)} meses`;
+                }
+                
+                console.log(`📝 Generando item ${index + 1}: ${commit.message.substring(0, 30)}...`);
+                
+                return `
+                    <div class="timeline-item d-flex align-items-center mb-2 p-3" 
+                         onclick="highlightCommit('${commit.hash}')"
+                         style="cursor: pointer;">
+                        <div class="timeline-icon me-3">
+                            <i class="fas fa-code-branch"></i>
+                        </div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div style="flex: 1;">
+                                    <strong style="display: block; margin-bottom: 4px;">
+                                        ${commit.message.length > 45 ? commit.message.substring(0, 45) + '...' : commit.message}
+                                    </strong>
+                                    <div class="small">
+                                        <i class="fas fa-user me-1"></i>
+                                        ${commit.author?.name || 'Desconocido'}
+                                        <span class="mx-2">•</span>
+                                        <code>${commit.hash.substring(0, 7)}</code>
+                                    </div>
+                                </div>
+                                <div style="text-align: right; min-width: 80px;">
+                                    <small>${timeAgo}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+        ${commits.length > 10 ? `
+            <div class="timeline-footer text-center mt-3">
+                <small>... y ${commits.length - 10} commits más en el repositorio</small>
+            </div>
+        ` : ''}
+        <div class="timeline-compact-indicator">
+            <i class="fas fa-chevron-down me-1"></i>
+            <small>
+                ${commits.length > 3 ? `+${commits.length - 3} commits más` : 'Haz clic en "Expandir" para ver más opciones'}
+            </small>
+        </div>
+    `;
+    
+    timelineContent.innerHTML = timelineHTML;
+    timelineContainer.appendChild(timelineContent);
+    
+    // Forzar visibilidad y verificar que se agregó correctamente
+    timelineContainer.style.display = 'block';
+    timelineContainer.style.visibility = 'visible';
+    timelineContainer.style.opacity = '1';
+    
+    // Verificar que el contenido se agregó
+    const addedItems = timelineContainer.querySelectorAll('.timeline-item');
+    console.log('✅ Timeline actualizado con', commits.length, 'commits');
+    console.log('👁️ Items visibles en DOM:', addedItems.length);
+    console.log('📦 HTML del timeline:', timelineContent.innerHTML.substring(0, 200) + '...');
+    
+    // Marcar como listo
+    timelineContainer.setAttribute('data-loaded', 'true');
+    
+    // Disparar evento para notificar al sistema de vistas alternas
+    const commitsLoadedEvent = new CustomEvent('commitsLoaded', {
+        detail: { commits: commits, source: 'updateTimelineWithCommits' }
+    });
+    window.dispatchEvent(commitsLoadedEvent);
+}
+
+/**
+ * Resalta un commit específico en la visualización 3D
+ */
+function highlightCommit(commitHash) {
+    console.log('🎯 Resaltando commit:', commitHash);
+    
+    // Buscar el nodo del commit
+    const commitNode = nodes.find(node => 
+        node.userData && node.userData.hash === commitHash
+    );
+    
+    if (commitNode) {
+        // Restaurar todos los nodos a su estado normal
+        nodes.forEach(node => {
+            if (node.material && node.material.emissive) {
+                if (node.userData.originalEmissive) {
+                    node.material.emissive.copy(node.userData.originalEmissive);
+                }
+                node.material.opacity = 1.0;
+            }
+        });
+        
+        // Resaltar el nodo seleccionado
+        if (commitNode.material && commitNode.material.emissive) {
+            commitNode.material.emissive.setHex(0xffffff);
+            
+            // Enfocar la cámara en el commit
+            if (controls) {
+                controls.target.copy(commitNode.position);
+                controls.update();
+            }
+            
+            // Mostrar información del commit
+            showElementInfo(commitNode.userData);
+        }
+    } else {
+        console.warn('⚠️ No se encontró nodo para commit:', commitHash);
+    }
 }
 
 /**
@@ -1581,4 +2557,275 @@ function createTestNodes() {
     scene.add(testCube);
     
     console.log('📦 Cubo wireframe de prueba agregado en el centro');
-} 
+}
+
+/**
+ * Funciones auxiliares adicionales para integración completa
+ */
+function loadTimelineData() {
+    console.log('🔄 Cargando datos del timeline...');
+    
+    // Si ya tenemos commits almacenados, los usamos
+    if (window.ViewSystem.timelineCommits.length > 0) {
+        updateTimelineFullView(window.ViewSystem.timelineCommits);
+        showNotification('Timeline cargado desde caché', 'success');
+        return;
+    }
+    
+    // Intentar cargar desde la visualización 3D actual
+    if (typeof commits !== 'undefined' && commits.length > 0) {
+        updateTimelineFullView(commits);
+        showNotification('Timeline cargado desde visualización 3D', 'success');
+        return;
+    }
+    
+    // Si no hay datos, mostrar mensaje
+    showNotification('No hay commits disponibles. Primero carga un repositorio.', 'warning');
+}
+
+/**
+ * Integración con el sistema de carga de commits existente (con prevención de bucles)
+ */
+function integrateWithExistingSystem() {
+    let lastIntegrationTime = 0;
+    let isIntegrating = false;
+    
+    // Sobrescribir la función updateTimelineWithCommits existente
+    const originalUpdateTimeline = window.updateTimelineWithCommits;
+    
+    window.updateTimelineWithCommits = function(commits) {
+        const now = Date.now();
+        
+        // Evitar bucles infinitos - solo procesar si han pasado al menos 2 segundos
+        if (isIntegrating || (now - lastIntegrationTime) < 2000) {
+            console.log('🔗 Integración omitida - evitando bucle infinito');
+            return;
+        }
+        
+        isIntegrating = true;
+        lastIntegrationTime = now;
+        
+        console.log('🔗 Integrando con sistema existente:', commits?.length, 'commits');
+        
+        // Mantener funcionalidad original si es necesaria
+        if (originalUpdateTimeline && typeof originalUpdateTimeline === 'function') {
+            try {
+                originalUpdateTimeline.call(this, commits);
+            } catch (error) {
+                console.warn('⚠️ Error en función original:', error);
+            }
+        }
+        
+        // Integrar con nuevo sistema de vistas alternas
+        if (commits && commits.length > 0) {
+            // Guardar commits para el sistema de vistas alternas
+            window.ViewSystem.timelineCommits = [...commits];
+            window.ViewSystem.totalCommits = commits.length;
+            
+            // Si estamos en vista timeline, actualizar inmediatamente
+            if (window.ViewSystem.currentView === 'timeline') {
+                updateTimelineFullView(commits);
+            }
+            
+            // Disparar evento para notificar al sistema (solo si no se ha disparado recientemente)
+            const event = new CustomEvent('commitsLoaded', {
+                detail: { commits: commits, source: 'integrated' }
+            });
+            window.dispatchEvent(event);
+        }
+        
+        // Resetear flag después de procesar
+        setTimeout(() => {
+            isIntegrating = false;
+        }, 1000);
+    };
+}
+
+/**
+ * Función para sincronizar con commits globales
+ */
+function syncWithGlobalCommits() {
+    // Verificar si hay commits en variables globales
+    if (typeof window.commits !== 'undefined' && window.commits.length > 0) {
+        console.log('🔗 Sincronizando con commits globales:', window.commits.length);
+        window.ViewSystem.timelineCommits = [...window.commits];
+        window.ViewSystem.totalCommits = window.commits.length;
+        
+        if (window.ViewSystem.currentView === 'timeline') {
+            updateTimelineFullView(window.commits);
+        }
+    }
+}
+
+/**
+ * Sistema de notificaciones mejorado
+ */
+function showNotification(message, type = 'info') {
+    // Usar sistema existente si está disponible
+    if (typeof window.uiController !== 'undefined' && window.uiController.showNotification) {
+        window.uiController.showNotification(message, type);
+        return;
+    }
+    
+    // Sistema de respaldo simple
+    console.log(`${type.toUpperCase()}: ${message}`);
+    
+    // Crear toast simple si no hay sistema
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : type} position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.style.minWidth = '250px';
+    toast.innerHTML = `
+        <i class="fas fa-${type === 'success' ? 'check' : type === 'error' ? 'exclamation-triangle' : 'info-circle'}"></i>
+        ${message}
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+/**
+ * Inicialización del sistema cuando el DOM está listo
+ */
+function initializeTimelineSystem() {
+    console.log('🚀 Inicializando sistema completo de timeline...');
+    
+    // Integrar con sistema existente
+    integrateWithExistingSystem();
+    
+    // Sincronizar con commits globales si existen
+    syncWithGlobalCommits();
+    
+    // Configurar controles contextuales iniciales
+    const controls3d = document.querySelectorAll('.view-controls-3d');
+    const controlsTimeline = document.querySelectorAll('.view-controls-timeline');
+    
+    // Mostrar controles de vista 3D por defecto
+    controls3d.forEach(control => {
+        control.style.display = 'flex';
+    });
+    
+    controlsTimeline.forEach(control => {
+        control.style.display = 'none';
+    });
+    
+    // Verificar periódicamente por nuevos commits
+    setInterval(() => {
+        if (typeof window.commits !== 'undefined' && 
+            window.commits.length > 0 && 
+            window.commits.length !== window.ViewSystem.totalCommits) {
+            console.log('🔄 Detectados nuevos commits, sincronizando...');
+            syncWithGlobalCommits();
+        }
+    }, 5000);
+    
+    console.log('✅ Sistema de timeline inicializado completamente');
+}
+
+/**
+ * Optimiza el layout del contenedor del timeline para máximo aprovechamiento del espacio
+ */
+function optimizeTimelineLayout() {
+    const container = document.getElementById('timeline-container-full');
+    if (!container) return;
+    
+    // Aplicar estilos optimizados para mejor aprovechamiento del espacio
+    const style = container.style;
+    style.display = 'flex';
+    style.flexDirection = 'column';
+    style.height = '100%';
+    style.maxHeight = '90vh';
+    style.overflow = 'hidden';
+    
+    // Optimizar el contenedor de commits si existe
+    const commitsContainer = container.querySelector('.timeline-commits-container');
+    if (commitsContainer) {
+        commitsContainer.style.flex = '1 1 auto';
+        commitsContainer.style.overflow = 'auto';
+        commitsContainer.style.scrollBehavior = 'smooth';
+    }
+    
+    console.log('📐 Layout del timeline optimizado');
+}
+
+// Inicializar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        initializeTimelineSystem();
+        // Optimizar layout después de la inicialización
+        setTimeout(optimizeTimelineLayout, 200);
+    });
+} else {
+    initializeTimelineSystem();
+    setTimeout(optimizeTimelineLayout, 200);
+}
+
+// Optimizar automáticamente cuando se redimensiona la ventana (con throttling)
+window.addEventListener('resize', function() {
+    // Debounce más largo para evitar re-renderizados constantes
+    clearTimeout(window.ViewSystem.resizeTimeout);
+    window.ViewSystem.resizeTimeout = setTimeout(() => {
+        // Solo optimizar si el cambio de tamaño es significativo
+        const currentHeight = window.innerHeight;
+        const lastHeight = window.ViewSystem.lastWindowHeight || currentHeight;
+        const heightDifference = Math.abs(currentHeight - lastHeight);
+        
+        // Solo re-optimizar si el cambio es mayor a 100px para evitar micro-ajustes
+        if (heightDifference > 100 && window.ViewSystem.currentView === 'timeline' && window.ViewSystem.timelineCommits.length > 0) {
+            console.log(`📏 Re-optimizando por cambio significativo de altura: ${lastHeight}px -> ${currentHeight}px`);
+            optimizeCommitsPerPage();
+            window.ViewSystem.lastWindowHeight = currentHeight;
+        }
+    }, 750); // Aumentar tiempo de debounce
+});
+
+// Funciones globales adicionales para compatibilidad
+window.loadTimelineData = loadTimelineData;
+window.syncWithGlobalCommits = syncWithGlobalCommits;
+window.optimizeCommitsPerPage = optimizeCommitsPerPage;
+window.optimizeTimelineLayout = optimizeTimelineLayout;
+window.preserveScrollPosition = preserveScrollPosition;
+
+// Función de utilidad para debugging del timeline
+window.debugTimelineScroll = function() {
+    const container = document.getElementById('timeline-container-full');
+    if (!container) {
+        console.log('❌ Timeline container no encontrado');
+        return;
+    }
+    
+    console.log('🔍 Debug del Timeline Scroll:');
+    console.log('Container height:', container.offsetHeight);
+    console.log('Container scrollHeight:', container.scrollHeight);
+    console.log('Container scrollTop:', container.scrollTop);
+    console.log('Container style.height:', container.style.height);
+    console.log('Container style.maxHeight:', container.style.maxHeight);
+    
+    const commitsContainer = container.querySelector('.timeline-commits-container');
+    if (commitsContainer) {
+        console.log('Commits container height:', commitsContainer.offsetHeight);
+        console.log('Commits container scrollHeight:', commitsContainer.scrollHeight);
+        console.log('Commits container scrollTop:', commitsContainer.scrollTop);
+    }
+    
+    return {
+        container: {
+            height: container.offsetHeight,
+            scrollHeight: container.scrollHeight,
+            scrollTop: container.scrollTop
+        },
+        commitsContainer: commitsContainer ? {
+            height: commitsContainer.offsetHeight,
+            scrollHeight: commitsContainer.scrollHeight,
+            scrollTop: commitsContainer.scrollTop
+        } : null
+    };
+};
+
+console.log('✅ Sistema de Timeline Completo con Paginación inicializado');
+    

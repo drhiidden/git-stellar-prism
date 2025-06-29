@@ -22,10 +22,7 @@ class UIController {
             repoUrl: document.getElementById('repoUrl'),
             loadingIndicator: document.getElementById('loading-indicator'),
             emptyState: document.getElementById('empty-state'),
-            timelineEmptyState: document.getElementById('timeline-empty-state'),
-            visualizationControls: document.getElementById('visualization-controls'),
             filtersSection: document.getElementById('filters-section'),
-            infoPanel: document.getElementById('info-panel'),
             commitInfo: document.getElementById('commit-info'),
             realtimeStatus: document.getElementById('realtime-status'),
             notificationToast: document.getElementById('notification-toast')
@@ -38,6 +35,11 @@ class UIController {
      * Inicialización del controlador
      */
     init() {
+        // Verificar y reinicializar elementos DOM después de que todo esté cargado
+        setTimeout(() => {
+            this.reinitializeElements();
+        }, 100);
+        
         this.setupEventListeners();
         this.setupKeyboardShortcuts();
         this.checkInitialStatus();
@@ -46,6 +48,46 @@ class UIController {
         this.animateInitialLoad();
         
         console.log('🎮 UIController inicializado correctamente');
+    }
+    
+    /**
+     * Reinicializar referencias a elementos DOM para asegurar que existan
+     */
+    reinitializeElements() {
+        const elementChecks = {
+            loadingIndicator: 'loading-indicator',
+            emptyState: 'empty-state',
+            filtersSection: 'filters-section',
+            commitInfo: 'commit-info',
+            realtimeStatus: 'realtime-status'
+        };
+        
+        let elementsFound = 0;
+        let totalElements = Object.keys(elementChecks).length;
+        
+        for (const [key, id] of Object.entries(elementChecks)) {
+            const element = document.getElementById(id);
+            if (element) {
+                this.elements[key] = element;
+                elementsFound++;
+            } else {
+                console.warn(`⚠️ Elemento ${id} no encontrado en el DOM`);
+            }
+        }
+        
+        console.log(`🔍 Elementos DOM verificados: ${elementsFound}/${totalElements} encontrados`);
+        
+        // Elementos específicos para vistas alternas
+        const timelineContainerFull = document.getElementById('timeline-container-full');
+        if (timelineContainerFull) {
+            console.log('✅ Sistema de vistas alternas detectado');
+        }
+        
+        const view3d = document.getElementById('view-3d');
+        const viewTimeline = document.getElementById('view-timeline');
+        if (view3d && viewTimeline) {
+            console.log('✅ Vistas 3D y Timeline detectadas correctamente');
+        }
     }
     
     /**
@@ -240,13 +282,29 @@ class UIController {
         ];
         
         if (show) {
-            this.elements.loadingIndicator.style.display = 'block';
-            this.elements.emptyState.style.display = 'none';
-            this.elements.timelineEmptyState.style.display = 'none';
+            // Verificación de seguridad para cada elemento
+            if (this.elements.loadingIndicator) {
+                this.elements.loadingIndicator.style.display = 'block';
+            } else {
+                console.warn('⚠️ Elemento loading-indicator no encontrado');
+            }
+            
+            if (this.elements.emptyState) {
+                this.elements.emptyState.style.display = 'none';
+            }
+            
+            if (this.elements.timelineEmptyState) {
+                this.elements.timelineEmptyState.style.display = 'none';
+            }
+            
             this.showVisualizationUI(false);
         } else {
-            this.elements.loadingIndicator.style.display = 'none';
+            if (this.elements.loadingIndicator) {
+                this.elements.loadingIndicator.style.display = 'none';
+            }
         }
+        
+        console.log(`🔄 Loading state: ${show ? 'ON' : 'OFF'}`);
     }
     
     /**
@@ -270,8 +328,12 @@ class UIController {
         
         // Ocultar estados vacíos si se muestra la UI
         if (show) {
-            this.elements.emptyState.style.display = 'none';
-            this.elements.timelineEmptyState.style.display = 'none';
+            if (this.elements.emptyState) {
+                this.elements.emptyState.style.display = 'none';
+            }
+            if (this.elements.timelineEmptyState) {
+                this.elements.timelineEmptyState.style.display = 'none';
+            }
         }
     }
     

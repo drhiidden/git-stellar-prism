@@ -12,7 +12,7 @@
         <div class="row g-4">
             
             <!-- Panel de control lateral -->
-            <div class="col-xl-3 col-lg-4 col-md-12">
+            <div class="col-xl-2 col-lg-3 col-md-12">
                 <!-- Sección de entrada de repositorio (solo si no viene predefinido) -->
                 <div class="card modern-card mb-4 fade-in" id="repo-selector-panel">
                     <div class="card-header modern-card-header">
@@ -73,18 +73,18 @@
                             </div>
                         </div>
                         
-                        <div class="d-flex gap-2">
-                            <a href="/dashboard" class="btn btn-outline-secondary flex-fill">
+                        <div class="d-grid gap-2">
+                            <a href="/dashboard" class="btn btn-outline-secondary btn-sm">
                                 <i class="fas fa-arrow-left me-1"></i>
                                 Dashboard
                             </a>
-                            <button type="button" class="btn btn-outline-info flex-fill" id="change-repo-btn">
+                            <button type="button" class="btn btn-outline-info btn-sm" id="change-repo-btn">
                                 <i class="fas fa-exchange-alt me-1"></i>
                                 Cambiar
                             </button>
-                            <button type="button" class="btn btn-outline-success flex-fill" onclick="testDirectLoad()">
-                                <i class="fas fa-bug me-1"></i>
-                                Test
+                            <button type="button" class="btn btn-outline-success btn-sm" id="btnGenerateGraph">
+                                <i class="fas fa-project-diagram me-1"></i>
+                                Generar Grafo
                             </button>
                         </div>
                     </div>
@@ -116,36 +116,7 @@
                     </div>
                 </div>
 
-                <!-- Controles de visualización -->
-                <div class="card modern-card mb-4" id="visualization-controls" style="display: none;">
-                    <div class="card-header modern-card-header">
-                        <h6 class="card-title mb-0 d-flex align-items-center">
-                            <i class="fas fa-sliders-h me-2"></i>
-                            Controles de Vista
-                        </h6>
-                    </div>
-                    
-                    <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <button type="button" class="btn btn-outline-secondary" id="btnZoomIn">
-                                <i class="fas fa-search-plus me-2"></i>
-                                Acercar
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary" id="btnZoomOut">
-                                <i class="fas fa-search-minus me-2"></i>
-                                Alejar
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary" id="btnReset">
-                                <i class="fas fa-home me-2"></i>
-                                Vista inicial
-                            </button>
-                            <button type="button" class="btn btn-outline-info" id="btnGenerateGraph">
-                                <i class="fas fa-project-diagram me-2"></i>
-                                Generar Grafo
-                            </button>
-                        </div>
-                    </div>
-                </div>
+
 
                 <!-- Filtros avanzados -->
                 <div class="card modern-card mb-4" id="filters-section" style="display: none;">
@@ -189,24 +160,80 @@
                 </div>
             </div>
             
-            <!-- Área de visualización principal -->
-            <div class="col-xl-9 col-lg-8 col-md-12">
+            <!-- Área de visualización principal con sistema de vistas alternas -->
+            <div class="col-xl-10 col-lg-9 col-md-12">
                 <div class="card modern-card h-100 fade-in">
                     <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0 d-flex align-items-center">
-                            <i class="fas fa-cube me-2"></i>
-                            Visualización 3D
-                        </h5>
+                        <!-- Botones de Vista Principal -->
+                        <div class="d-flex align-items-center gap-3">
+                            <h5 class="card-title mb-0 me-3">
+                                <i class="fas fa-chart-area me-2"></i>
+                                Análisis Visual
+                            </h5>
+                            
+                            <!-- Toggle de Vistas -->
+                            <div class="btn-group" role="group" aria-label="Selector de vista">
+                                <button type="button" class="btn btn-primary view-toggle-btn active" 
+                                        id="btn-view-3d" onclick="switchToView('3d')">
+                                    <i class="fas fa-cube me-1"></i>
+                                    <span>Vista 3D</span>
+                                </button>
+                                <button type="button" class="btn btn-outline-primary view-toggle-btn" 
+                                        id="btn-view-timeline" onclick="switchToView('timeline')">
+                                    <i class="fas fa-clock me-1"></i>
+                                    <span>Timeline</span>
+                                </button>
+                            </div>
+                        </div>
                         
+                        <!-- Controles Contextuales -->
                         <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-light btn-sm" id="btnAnalisisTecnologias">
-                                <i class="fas fa-chart-bar me-1"></i>
-                                <span class="d-none d-md-inline">Análisis Técnico</span>
-                            </button>
-                            <button type="button" class="btn btn-outline-light btn-sm" id="btnGenerarResumen">
-                                <i class="fas fa-file-alt me-1"></i>
-                                <span class="d-none d-md-inline">Generar Resumen</span>
-                            </button>
+                            <!-- Controles específicos de Vista 3D -->
+                            <div class="view-controls view-controls-3d">
+                                <button type="button" class="btn btn-outline-light btn-sm" id="btnAnalisisTecnologias">
+                                    <i class="fas fa-chart-bar me-1"></i>
+                                    <span class="d-none d-md-inline">Análisis Técnico</span>
+                                </button>
+                                <button type="button" class="btn btn-outline-light btn-sm" id="btnGenerarResumen">
+                                    <i class="fas fa-file-alt me-1"></i>
+                                    <span class="d-none d-md-inline">Generar Resumen</span>
+                                </button>
+                            </div>
+                            
+                            <!-- Controles específicos de Timeline -->
+                            <div class="view-controls view-controls-timeline">
+                                <button type="button" class="btn btn-outline-light btn-sm" id="timeline-refresh-header" onclick="refreshTimeline()">
+                                    <i class="fas fa-sync-alt me-1"></i>
+                                    <span class="d-none d-md-inline">Actualizar</span>
+                                </button>
+                                <div class="dropdown">
+                                    <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-arrows-alt-v me-1"></i>
+                                        <span class="d-none d-md-inline">Altura</span>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" onclick="setTimelineHeightMode('auto')">
+                                            <i class="fas fa-magic me-2"></i>Auto (Recomendado)
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="setTimelineHeightMode('grid')">
+                                            <i class="fas fa-th me-2"></i>CSS Grid
+                                        </a></li>
+                                        <li><a class="dropdown-item" href="#" onclick="setTimelineHeightMode('viewport')">
+                                            <i class="fas fa-tv me-2"></i>Viewport Completo
+                                        </a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="#" onclick="debugTimelineHeight()">
+                                            <i class="fas fa-info-circle me-2"></i>Información Debug
+                                        </a></li>
+                                    </ul>
+                                </div>
+                                <button type="button" class="btn btn-outline-light btn-sm" onclick="debugTimeline()">
+                                    <i class="fas fa-bug me-1"></i>
+                                    <span class="d-none d-md-inline">Debug</span>
+                                </button>
+                            </div>
+                            
+                            <!-- Controles Globales -->
                             <div class="dropdown">
                                 <button class="btn btn-outline-light btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                     <i class="fas fa-download me-1"></i>
@@ -231,83 +258,88 @@
                     </div>
                     
                     <div class="card-body p-0 position-relative">
-                        <div id="visualization-container" class="three-container">
-                            <!-- Contenedor de Three.js -->
-                            
-                            <!-- Información de hover -->
-                            <div id="commit-info" class="commit-info-panel">
-                                <div class="commit-info-content">
-                                    <div class="commit-info-header">
-                                        <strong id="commit-title">Información del Commit</strong>
-                                        <button class="btn-close btn-close-white" id="commit-info-close"></button>
-                                    </div>
-                                    <div id="commit-details">
-                                        <!-- Contenido dinámico -->
+                        <!-- Vista de Visualización 3D -->
+                        <div id="view-3d" class="analysis-view active">
+                            <div id="visualization-container" class="full-height-container">
+                                <!-- Contenedor de Three.js -->
+                                
+                                <!-- Información de hover -->
+                                <div id="commit-info" class="commit-info-panel">
+                                    <div class="commit-info-content">
+                                        <div class="commit-info-header">
+                                            <strong id="commit-title">Información del Commit</strong>
+                                            <button class="btn-close btn-close-white" id="commit-info-close"></button>
+                                        </div>
+                                        <div id="commit-details">
+                                            <!-- Contenido dinámico -->
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            
-                            <!-- Instrucciones de interacción -->
-                            <div class="interaction-help">
-                                <div class="help-content">
-                                    <span>Clic: rotar | Rueda: zoom | Clic derecho: mover</span>
+                                
+                                <!-- Instrucciones de interacción -->
+                                <div class="interaction-help">
+                                    <div class="help-content">
+                                        <span>Clic: rotar | Rueda: zoom | Clic derecho: mover</span>
+                                    </div>
                                 </div>
-                            </div>
-                            
-                            <!-- Controles de zoom flotantes -->
-                            <div class="zoom-controls">
-                                <button class="btn btn-sm btn-light" id="btnZoomInFloat" title="Acercar">
-                                    <i class="fas fa-plus"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light" id="btnZoomOutFloat" title="Alejar">
-                                    <i class="fas fa-minus"></i>
-                                </button>
-                                <button class="btn btn-sm btn-light" id="btnResetFloat" title="Restablecer">
-                                    <i class="fas fa-home"></i>
-                                </button>
-                            </div>
-                            
-                            <!-- Estado vacío -->
-                            <div id="empty-state" class="position-absolute top-50 start-50 translate-middle text-center">
-                                <i class="fas fa-cube fa-4x mb-4 text-muted opacity-25"></i>
-                                <h4 class="text-muted">Listo para análisis</h4>
-                                <p class="text-muted">Ingresa un repositorio para comenzar la exploración 3D</p>
+                                
+                                <!-- Controles de zoom flotantes -->
+                                <div class="zoom-controls">
+                                    <button class="btn btn-sm btn-light" id="btnZoomInFloat" title="Acercar">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-light" id="btnZoomOutFloat" title="Alejar">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-light" id="btnResetFloat" title="Restablecer">
+                                        <i class="fas fa-home"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Estado vacío -->
+                                <div id="empty-state" class="position-absolute top-50 start-50 translate-middle text-center">
+                                    <i class="fas fa-cube fa-4x mb-4 text-muted opacity-25"></i>
+                                    <h4 class="text-muted">Listo para análisis</h4>
+                                    <p class="text-muted">Ingresa un repositorio para comenzar la exploración 3D</p>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Timeline de actividad -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card modern-card fade-in">
-                    <div class="card-header modern-card-header d-flex justify-content-between align-items-center">
-                        <h5 class="card-title mb-0 d-flex align-items-center">
-                            <i class="fas fa-clock me-2"></i>
-                            Timeline de Actividad
-                        </h5>
                         
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="timeline-export">
-                                <i class="fas fa-download me-1"></i>
-                                <span class="d-none d-md-inline">Exportar</span>
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" id="timeline-fullscreen">
-                                <i class="fas fa-expand me-1"></i>
-                                <span class="d-none d-md-inline">Pantalla completa</span>
-                            </button>
-                        </div>
-                    </div>
-                    
-                    <div class="card-body p-0 position-relative">
-                        <div id="timeline-container" class="timeline-container">
-                            <!-- Estado vacío del timeline -->
-                            <div id="timeline-empty-state" class="position-absolute top-50 start-50 translate-middle text-center">
-                                <i class="fas fa-clock fa-3x mb-3 text-muted opacity-25"></i>
-                                <h5 class="text-muted">Timeline vacío</h5>
-                                <p class="text-muted">Los eventos aparecerán aquí después de cargar un repositorio</p>
+                        <!-- Vista de Timeline -->
+                        <div id="view-timeline" class="analysis-view">
+                            <div class="full-height-container timeline-full-view">
+                                <div id="timeline-container-full" class="timeline-container-full">
+                                    <!-- Estado vacío del timeline -->
+                                    <div id="timeline-empty-state-full" class="position-absolute top-50 start-50 translate-middle text-center">
+                                        <i class="fas fa-clock fa-4x mb-4 text-muted opacity-25"></i>
+                                        <h4 class="text-muted">Timeline de Commits</h4>
+                                        <p class="text-muted">Los commits aparecerán aquí después de cargar un repositorio</p>
+                                        <button class="btn btn-outline-primary mt-3" onclick="loadTimelineData()">
+                                            <i class="fas fa-sync-alt me-2"></i>
+                                            Cargar Timeline
+                                        </button>
+                                    </div>
+                                    
+                                    <!-- Contenido del timeline - Se poblará dinámicamente -->
+                                </div>
+                                
+                                <!-- Indicador de que hay más commits si se aplican filtros -->
+                                <div class="timeline-stats-footer" style="display: none;">
+                                    <div class="d-flex justify-content-between align-items-center p-3 bg-dark bg-opacity-50">
+                                        <small class="text-muted">
+                                            <i class="fas fa-info-circle me-1"></i>
+                                            <span id="timeline-stats">Cargando estadísticas...</span>
+                                        </small>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-sm btn-outline-info" onclick="refreshTimeline()">
+                                                <i class="fas fa-sync-alt"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-warning" onclick="debugTimeline()">
+                                                <i class="fas fa-bug"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -347,6 +379,10 @@
     <div th:replace="~{fragments/header :: base-scripts}"></div>
     <div th:replace="~{fragments/header :: analysis-scripts}"></div>
     <div th:replace="~{fragments/header :: auth-scripts}"></div>
+    
+    <!-- Nuevos servicios y componentes modulares -->
+    <script src="/static/js/services/TimelineService.js"></script>
+    <script src="/static/js/services/VisualizationService.js"></script>
 
     <script th:inline="javascript">
         // Configuración específica de análisis
@@ -355,6 +391,12 @@
             const initialRepo = /*[[${initialRepo}]]*/ null;
             
             console.log('🔍 Repositorio inicial detectado:', initialRepo);
+            
+            // Inicializar sistema de vistas alternas
+            initializeViewSystem();
+            
+            // Configurar manejadores de errores globales mejorados
+            setupEnhancedErrorHandling();
             
             // Configurar UI según si hay repositorio predefinido
             if (initialRepo) {
@@ -406,6 +448,22 @@
             if (changeBtn) {
                 changeBtn.addEventListener('click', () => {
                     switchToManualMode();
+                });
+            }
+            
+            // Configurar botón de generar grafo
+            const generateBtn = document.getElementById('btnGenerateGraph');
+            if (generateBtn) {
+                generateBtn.addEventListener('click', () => {
+                    if (window.currentCommits && window.currentCommits.length > 0) {
+                        console.log('🎯 Regenerando visualización...');
+                        renderCommitsVisualization(window.currentCommits);
+                        if (typeof showNotification === 'function') {
+                            showNotification('Grafo regenerado correctamente', 'success');
+                        }
+                    } else {
+                        alert('No hay commits cargados para generar el grafo');
+                    }
                 });
             }
             
@@ -714,14 +772,34 @@
          * Muestra los controles de análisis
          */
         function showAnalysisControls() {
-            const controlsPanel = document.getElementById('visualization-controls');
             const filtersPanel = document.getElementById('filters-section');
             
-            if (controlsPanel) {
-                controlsPanel.style.display = 'block';
-            }
             if (filtersPanel) {
                 filtersPanel.style.display = 'block';
+            }
+            
+            // Asegurar que el timeline esté visible y poblado
+            ensureTimelineVisibility();
+        }
+        
+        /**
+         * Asegura que el timeline esté visible y funcionando
+         */
+        function ensureTimelineVisibility() {
+            const timelineContainer = document.getElementById('timeline-container');
+            const emptyState = document.getElementById('timeline-empty-state');
+            
+            if (timelineContainer) {
+                // Hacer visible el timeline container
+                timelineContainer.style.display = 'block';
+                timelineContainer.style.visibility = 'visible';
+                
+                // Si no hay contenido del timeline pero sí hay commits cargados, actualizar
+                const existingContent = timelineContainer.querySelector('.timeline-content');
+                if (!existingContent && window.currentCommits && window.currentCommits.length > 0) {
+                    console.log('🔄 Repoblando timeline con commits existentes');
+                    updateTimelineWithCommits(window.currentCommits);
+                }
             }
         }
 
@@ -731,6 +809,705 @@
         function clearVisualization() {
             if (typeof clearScene === 'function') {
                 clearScene();
+            }
+        }
+
+        /**
+         * Función para expandir/colapsar el timeline
+         */
+        function toggleTimeline() {
+            const timelineContainer = document.getElementById('timeline-container');
+            const toggleBtn = timelineContainer?.querySelector('.timeline-toggle-btn');
+            
+            if (!timelineContainer) {
+                console.warn('Timeline container no encontrado');
+                return;
+            }
+            
+            const isExpanded = timelineContainer.classList.contains('expanded');
+            
+            if (isExpanded) {
+                // Colapsar
+                timelineContainer.classList.remove('expanded');
+                if (toggleBtn) {
+                    toggleBtn.innerHTML = '<i class="fas fa-expand-alt"></i><span class="d-none d-sm-inline"> Expandir</span>';
+                    toggleBtn.title = 'Expandir Timeline';
+                }
+                console.log('📦 Timeline colapsado - modo compacto');
+            } else {
+                // Expandir
+                timelineContainer.classList.add('expanded');
+                if (toggleBtn) {
+                    toggleBtn.innerHTML = '<i class="fas fa-compress-alt"></i><span class="d-none d-sm-inline"> Colapsar</span>';
+                    toggleBtn.title = 'Colapsar Timeline';
+                }
+                console.log('📈 Timeline expandido - modo completo');
+            }
+            
+            // Trigger resize event para que la visualización se ajuste si es necesario
+            window.dispatchEvent(new Event('resize'));
+            
+            // Forzar redimensionamiento del canvas de Three.js después de la animación
+            setTimeout(() => {
+                if (window.renderer && window.camera) {
+                    const container = document.getElementById('visualization-container');
+                    if (container) {
+                        const rect = container.getBoundingClientRect();
+                        window.camera.aspect = rect.width / rect.height;
+                        window.camera.updateProjectionMatrix();
+                        window.renderer.setSize(rect.width, rect.height);
+                        console.log(`🔄 Canvas redimensionado: ${rect.width}x${rect.height}`);
+                    }
+                }
+            }, 350); // Esperar que termine la animación CSS
+        }
+
+        /**
+         * Función de debug para el timeline
+         */
+        function debugTimeline() {
+            console.log('🐛 === DEBUG TIMELINE ===');
+            
+            const timelineContainer = document.getElementById('timeline-container');
+            const emptyState = document.getElementById('timeline-empty-state');
+            
+            console.log('📦 Timeline container:', timelineContainer);
+            console.log('📊 Commits disponibles:', window.currentCommits?.length || 'No hay');
+            console.log('🏗️ Repositorio actual:', window.currentRepository || 'No hay');
+            
+            if (timelineContainer) {
+                console.log('🎨 Estilos del container:', {
+                    display: timelineContainer.style.display,
+                    visibility: timelineContainer.style.visibility,
+                    opacity: timelineContainer.style.opacity,
+                    height: timelineContainer.offsetHeight,
+                    width: timelineContainer.offsetWidth
+                });
+                
+                const timelineContent = timelineContainer.querySelector('.timeline-content');
+                console.log('📄 Timeline content:', timelineContent);
+                
+                if (timelineContent) {
+                    console.log('📝 HTML del contenido:', timelineContent.innerHTML.substring(0, 300));
+                    console.log('🎯 Items encontrados:', timelineContent.querySelectorAll('.timeline-item').length);
+                } else {
+                    console.log('❌ No se encontró .timeline-content');
+                }
+            }
+            
+            console.log('🔚 === FIN DEBUG ===');
+            
+            // Activar modo debug visual
+            if (timelineContainer) {
+                const isDebugActive = timelineContainer.getAttribute('data-debug') === 'true';
+                timelineContainer.setAttribute('data-debug', !isDebugActive ? 'true' : 'false');
+                console.log('🎨 Modo debug visual:', !isDebugActive ? 'ACTIVADO' : 'DESACTIVADO');
+            }
+            
+            // Crear timeline de prueba con datos fake si no hay datos
+            if (!window.currentCommits || window.currentCommits.length === 0) {
+                console.log('🧪 Creando timeline de prueba...');
+                const fakeCommits = [
+                    {
+                        hash: 'abc1234',
+                        message: 'Commit de prueba 1',
+                        timestamp: new Date().toISOString(),
+                        author: { name: 'Test User' }
+                    },
+                    {
+                        hash: 'def5678',
+                        message: 'Commit de prueba 2 con mensaje más largo',
+                        timestamp: new Date(Date.now() - 86400000).toISOString(),
+                        author: { name: 'Another User' }
+                    }
+                ];
+                
+                updateTimelineWithCommits(fakeCommits);
+            }
+        }
+
+        /**
+         * Sistema de vistas alternas - Cambiar entre Vista 3D y Timeline
+         */
+        let currentView = '3d'; // Vista por defecto
+        
+        function switchToView(viewType) {
+            console.log(`🔄 Cambiando a vista: ${viewType}`);
+            
+            // Actualizar estado global
+            currentView = viewType;
+            
+            // Ocultar todas las vistas
+            const allViews = document.querySelectorAll('.analysis-view');
+            allViews.forEach(view => {
+                view.classList.remove('active');
+            });
+            
+            // Mostrar vista seleccionada
+            const targetView = document.getElementById(`view-${viewType}`);
+            if (targetView) {
+                targetView.classList.add('active');
+            }
+            
+            // Actualizar botones de toggle
+            updateViewToggleButtons(viewType);
+            
+            // Mostrar/ocultar controles contextuales
+            updateContextualControls(viewType);
+            
+            // Ejecutar acciones específicas de la vista
+            if (viewType === '3d') {
+                handleView3DActivation();
+            } else if (viewType === 'timeline') {
+                handleTimelineViewActivation();
+            }
+        }
+        
+        function updateViewToggleButtons(activeView) {
+            const buttons = document.querySelectorAll('.view-toggle-btn');
+            buttons.forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.id === `btn-view-${activeView}`) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+        
+        function updateContextualControls(activeView) {
+            // Ocultar todos los controles
+            const allControls = document.querySelectorAll('.view-controls');
+            allControls.forEach(control => {
+                control.style.display = 'none';
+            });
+            
+            // Mostrar controles de la vista activa
+            const activeControls = document.querySelector(`.view-controls-${activeView}`);
+            if (activeControls) {
+                activeControls.style.display = 'flex';
+            }
+        }
+        
+        function handleView3DActivation() {
+            console.log('🎮 Activando vista 3D');
+            
+            // Trigger resize para que Three.js se ajuste al contenedor
+            setTimeout(() => {
+                if (window.renderer && window.camera) {
+                    const container = document.getElementById('visualization-container');
+                    if (container) {
+                        const rect = container.getBoundingClientRect();
+                        window.camera.aspect = rect.width / rect.height;
+                        window.camera.updateProjectionMatrix();
+                        window.renderer.setSize(rect.width, rect.height);
+                        console.log(`🔄 Canvas 3D redimensionado: ${rect.width}x${rect.height}`);
+                    }
+                }
+                window.dispatchEvent(new Event('resize'));
+            }, 100);
+        }
+        
+        function handleTimelineViewActivation() {
+            console.log('📈 Activando vista Timeline');
+            
+            // Cargar timeline si hay commits disponibles
+            if (window.currentCommits && window.currentCommits.length > 0) {
+                console.log('📊 Poblando timeline con commits existentes');
+                updateTimelineFullView(window.currentCommits);
+            } else {
+                console.log('⚠️ No hay commits disponibles, mostrando estado vacío');
+                showTimelineEmptyState();
+            }
+        }
+        
+        function showTimelineEmptyState() {
+            const emptyState = document.getElementById('timeline-empty-state-full');
+            if (emptyState) {
+                emptyState.style.display = 'block';
+            }
+        }
+        
+                 function hideTimelineEmptyState() {
+             const emptyState = document.getElementById('timeline-empty-state-full');
+             if (emptyState) {
+                 emptyState.style.display = 'none';
+             }
+         }
+         
+         /**
+          * Configura manejadores de errores mejorados
+          */
+         function setupEnhancedErrorHandling() {
+             // Filtrar errores específicos conocidos que no son críticos
+             const originalError = window.onerror;
+             window.onerror = function(message, source, lineno, colno, error) {
+                 // Filtrar errores de elementos DOM no encontrados que ya manejamos
+                 const isKnownDOMError = message.includes('getBoundingClientRect') || 
+                                       message.includes('Cannot read properties of null');
+                 
+                 if (isKnownDOMError) {
+                     console.warn('🔧 Error DOM conocido manejado:', {
+                         message,
+                         source: source.split('/').pop(),
+                         line: lineno
+                     });
+                     return true; // Prevenir que se muestre en consola como error no manejado
+                 }
+                 
+                 // Para otros errores, usar el manejador original
+                 if (originalError) {
+                     return originalError(message, source, lineno, colno, error);
+                 }
+                 return false;
+             };
+             
+             console.log('🛡️ Manejadores de errores mejorados configurados');
+         }
+
+         /**
+          * Inicializa el sistema de vistas alternas
+          */
+         function initializeViewSystem() {
+             console.log('🚀 Inicializando sistema de vistas alternas');
+             
+             // Asegurar que la vista 3D esté activa por defecto
+             switchToView('3d');
+             
+             // Configurar event listeners adicionales si es necesario
+             setupViewEventListeners();
+         }
+         
+         function setupViewEventListeners() {
+             // Event listener para detectar cuando se cargan commits
+             window.addEventListener('commitsLoaded', (event) => {
+                 console.log('📊 Commits cargados, actualizando vistas', event.detail);
+                 
+                 // Si estamos en vista timeline, actualizar
+                 if (currentView === 'timeline') {
+                     updateTimelineFullView(event.detail.commits);
+                 }
+             });
+             
+             // Hacer que updateTimelineFullView sea global para debugging
+             window.updateTimelineFullView = updateTimelineFullView;
+             window.switchToView = switchToView;
+             window.currentView = () => currentView;
+             
+             // Función de diagnóstico para el sistema completo
+             window.diagnoseSystem = function() {
+                 console.log('🔍 === DIAGNÓSTICO DEL SISTEMA ===');
+                 console.log('📊 Vista actual:', currentView);
+                 console.log('📁 Repositorio:', window.currentRepository || 'No hay');
+                 console.log('💾 Commits:', window.currentCommits?.length || 'No hay');
+                 
+                 const view3d = document.getElementById('view-3d');
+                 const viewTimeline = document.getElementById('view-timeline');
+                 const timelineContainerFull = document.getElementById('timeline-container-full');
+                 const visualizationContainer = document.getElementById('visualization-container');
+                 
+                 console.log('🎮 Vista 3D:', view3d ? 'OK' : 'FALTA');
+                 console.log('📈 Vista Timeline:', viewTimeline ? 'OK' : 'FALTA');
+                 console.log('📊 Timeline Container Full:', timelineContainerFull ? 'OK' : 'FALTA');
+                 console.log('🎨 Visualization Container:', visualizationContainer ? 'OK' : 'FALTA');
+                 
+                 if (window.scene && window.camera && window.renderer) {
+                     console.log('✅ Three.js: OK');
+                 } else {
+                     console.log('❌ Three.js: PROBLEMA');
+                 }
+                 
+                 console.log('🔚 === FIN DIAGNÓSTICO ===');
+             };
+         }
+         
+         /**
+          * Actualiza el timeline en vista completa
+          */
+         function updateTimelineFullView(commits) {
+             console.log('📈 Actualizando timeline en vista completa con', commits?.length, 'commits');
+             
+             const timelineContainer = document.getElementById('timeline-container-full');
+             if (!timelineContainer) {
+                 console.warn('⚠️ Timeline container full no encontrado');
+                 return;
+             }
+             
+             if (!commits || commits.length === 0) {
+                 console.warn('⚠️ No hay commits para mostrar en timeline completo');
+                 showTimelineEmptyState();
+                 return;
+             }
+             
+             // Ocultar estado vacío
+             hideTimelineEmptyState();
+             
+             // Limpiar contenido anterior
+             const existingContent = timelineContainer.querySelector('.timeline-content');
+             if (existingContent) {
+                 existingContent.remove();
+             }
+             
+             // Crear contenido del timeline
+             const timelineContent = document.createElement('div');
+             timelineContent.className = 'timeline-content';
+             
+             // Ordenar commits por fecha (más reciente primero)
+             const sortedCommits = [...commits].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+             
+             // Crear HTML del timeline completo (mostramos todos los commits)
+             const timelineHTML = `
+                 <div class="timeline-header">
+                     <h4>📊 Timeline Completo (${commits.length} commits)</h4>
+                     <p class="mb-0 text-muted">Historia completa del repositorio ordenada por fecha</p>
+                 </div>
+                 <div class="timeline-items">
+                     ${sortedCommits.map((commit, index) => {
+                         const commitDate = new Date(commit.timestamp);
+                         const daysSince = Math.floor((Date.now() - commitDate.getTime()) / (1000 * 60 * 60 * 24));
+                         
+                         let timeAgo = '';
+                         if (daysSince === 0) {
+                             timeAgo = 'Hoy';
+                         } else if (daysSince === 1) {
+                             timeAgo = 'Ayer';
+                         } else if (daysSince < 7) {
+                             timeAgo = `${daysSince} días`;
+                         } else if (daysSince < 30) {
+                             timeAgo = `${Math.floor(daysSince / 7)} semanas`;
+                         } else {
+                             timeAgo = `${Math.floor(daysSince / 30)} meses`;
+                         }
+                         
+                         return `
+                             <div class="timeline-item d-flex align-items-start p-3" 
+                                  onclick="highlightCommit('${commit.hash}')"
+                                  style="cursor: pointer;">
+                                 <div class="timeline-icon me-3 mt-1">
+                                     <i class="fas fa-code-branch"></i>
+                                 </div>
+                                 <div class="flex-grow-1">
+                                     <div class="d-flex justify-content-between align-items-start mb-2">
+                                         <h6 class="mb-1 fw-bold">
+                                             ${commit.message}
+                                         </h6>
+                                         <div class="text-end ms-3">
+                                             <small class="text-muted">${timeAgo}</small>
+                                         </div>
+                                     </div>
+                                     <div class="d-flex justify-content-between align-items-center">
+                                         <div class="commit-meta">
+                                             <span class="badge bg-secondary me-2">
+                                                 <i class="fas fa-user me-1"></i>
+                                                 ${commit.author?.name || 'Desconocido'}
+                                             </span>
+                                             <code class="text-info">${commit.hash.substring(0, 7)}</code>
+                                         </div>
+                                         <div class="commit-actions">
+                                             <small class="text-muted">
+                                                 ${commitDate.toLocaleDateString()} ${commitDate.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                             </small>
+                                         </div>
+                                     </div>
+                                 </div>
+                             </div>
+                         `;
+                     }).join('')}
+                 </div>
+             `;
+             
+             timelineContent.innerHTML = timelineHTML;
+             timelineContainer.appendChild(timelineContent);
+             
+             // Actualizar estadísticas
+             updateTimelineStats(commits);
+             
+             console.log('✅ Timeline completo actualizado con', commits.length, 'commits');
+         }
+         
+         function updateTimelineStats(commits) {
+             const statsElement = document.getElementById('timeline-stats');
+             const statsFooter = document.querySelector('.timeline-stats-footer');
+             
+             if (statsElement && commits && commits.length > 0) {
+                 const totalCommits = commits.length;
+                 const authors = [...new Set(commits.map(c => c.author?.name).filter(Boolean))];
+                 const dateRange = getCommitDateRange(commits);
+                 
+                 statsElement.textContent = `${totalCommits} commits • ${authors.length} autores • Período: ${dateRange}`;
+                 
+                 if (statsFooter) {
+                     statsFooter.style.display = 'block';
+                 }
+             }
+         }
+         
+         function getCommitDateRange(commits) {
+             if (!commits || commits.length === 0) return 'N/A';
+             
+             const dates = commits.map(c => new Date(c.timestamp)).sort((a, b) => a - b);
+             const oldest = dates[0];
+             const newest = dates[dates.length - 1];
+             
+             const formatDate = (date) => date.toLocaleDateString('es-ES', { 
+                 year: 'numeric', 
+                 month: 'short', 
+                 day: 'numeric' 
+             });
+             
+             return `${formatDate(oldest)} - ${formatDate(newest)}`;
+         }
+         
+                 /**
+         * Sistema de análisis simplificado - Inicialización
+         */
+        let analysisSystem = null;
+        
+        function initializeAnalysisSystem() {
+            console.log('🚀 Inicializando sistema de análisis simplificado...');
+            
+            analysisSystem = {
+                commits: [],
+                currentView: 'timeline',
+                repository: null,
+                currentPage: 1,
+                commitsPerPage: 15,
+                
+                // Inicializar con repositorio
+                async init(repository) {
+                    this.repository = repository;
+                    await this.loadCommits();
+                    this.renderCurrentView();
+                },
+                
+                // Cargar commits
+                async loadCommits() {
+                    if (!this.repository) return;
+                    
+                    try {
+                        // Usar commits existentes si están disponibles
+                        if (window.currentCommits && window.currentCommits.length > 0) {
+                            this.commits = window.currentCommits;
+                            console.log(`✅ ${this.commits.length} commits cargados desde cache`);
+                            return;
+                        }
+                        
+                        // Cargar desde API
+                        const response = await fetch(`/api/repositories/${encodeURIComponent(this.repository)}/commits`);
+                        if (response.ok) {
+                            this.commits = await response.json();
+                            window.currentCommits = this.commits; // Cache para otros sistemas
+                            console.log(`✅ ${this.commits.length} commits cargados desde API`);
+                        }
+                    } catch (error) {
+                        console.error('❌ Error cargando commits:', error);
+                    }
+                },
+                
+                // Renderizar vista actual
+                renderCurrentView() {
+                    if (this.currentView === 'timeline') {
+                        this.renderTimeline();
+                    }
+                },
+                
+                // Renderizar timeline simplificado
+                renderTimeline() {
+                    const container = document.getElementById('timeline-container-full');
+                    if (!container || this.commits.length === 0) return;
+                    
+                    const startIndex = (this.currentPage - 1) * this.commitsPerPage;
+                    const endIndex = startIndex + this.commitsPerPage;
+                    const pageCommits = this.commits.slice(startIndex, endIndex);
+                    
+                    const commitsHTML = pageCommits.map((commit, index) => {
+                        const globalIndex = startIndex + index + 1;
+                        const shortHash = commit.hash.substring(0, 8);
+                        const shortMessage = commit.message.length > 80 ? 
+                            commit.message.substring(0, 80) + '...' : commit.message;
+                        const relativeTime = this.getRelativeTime(commit.timestamp);
+                        
+                        return `
+                            <div class="timeline-commit-item d-flex p-2 mb-2 bg-dark bg-opacity-25 rounded" 
+                                 style="cursor: pointer; min-height: 70px; align-items: center;"
+                                 data-commit-hash="${commit.hash}">
+                                <div class="timeline-commit-index d-flex align-items-center justify-content-center me-3" 
+                                     style="min-width: 35px; height: 35px; background: linear-gradient(135deg, #007bff, #0056b3); 
+                                            border-radius: 50%; color: white; font-weight: bold; font-size: 0.8rem;">
+                                    ${globalIndex}
+                                </div>
+                                <div class="timeline-commit-content flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <strong class="d-block mb-1 text-light">${shortMessage}</strong>
+                                            <div class="d-flex align-items-center gap-3 text-muted small">
+                                                <span><i class="fas fa-user me-1"></i>${commit.author || 'Desconocido'}</span>
+                                                <span><i class="fas fa-calendar me-1"></i>${relativeTime}</span>
+                                                <span><i class="fas fa-code-branch me-1"></i>${commit.branch || 'main'}</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <small class="text-muted font-monospace">${shortHash}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    
+                    const totalPages = Math.ceil(this.commits.length / this.commitsPerPage);
+                    
+                    container.innerHTML = `
+                        <div class="timeline-header p-3 border-bottom">
+                            <h5 class="mb-0 text-light">
+                                <i class="fas fa-code-branch me-2"></i>
+                                Timeline - ${this.repository} (${this.commits.length} commits)
+                            </h5>
+                        </div>
+                        <div class="timeline-commits-container" style="flex: 1 1 auto; overflow-y: auto; padding: 16px; min-height: 0;">
+                            ${commitsHTML}
+                        </div>
+                        <div class="timeline-pagination d-flex justify-content-between align-items-center p-2 border-top bg-dark bg-opacity-10">
+                            <div>
+                                <small class="text-muted">
+                                    Página ${this.currentPage} de ${totalPages} (${this.commits.length} commits total)
+                                </small>
+                            </div>
+                            <div class="d-flex gap-1">
+                                <button class="btn btn-outline-primary btn-sm" onclick="analysisSystem.goToPage(${this.currentPage - 1})" 
+                                        ${this.currentPage === 1 ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-left"></i>
+                                </button>
+                                <input type="number" min="1" max="${totalPages}" value="${this.currentPage}" 
+                                       class="form-control form-control-sm" style="width: 60px;"
+                                       onchange="analysisSystem.goToPage(parseInt(this.value))">
+                                <button class="btn btn-outline-primary btn-sm" onclick="analysisSystem.goToPage(${this.currentPage + 1})" 
+                                        ${this.currentPage === totalPages ? 'disabled' : ''}>
+                                    <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                },
+                
+                // Navegar a página
+                goToPage(page) {
+                    const totalPages = Math.ceil(this.commits.length / this.commitsPerPage);
+                    if (page < 1 || page > totalPages) return;
+                    
+                    this.currentPage = page;
+                    this.renderTimeline();
+                    
+                    // Scroll suave al inicio
+                    const container = document.querySelector('.timeline-commits-container');
+                    if (container) {
+                        container.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                    
+                    console.log(`📄 Navegado a página ${page} de ${totalPages}`);
+                },
+                
+                // Tiempo relativo
+                getRelativeTime(timestamp) {
+                    const now = new Date();
+                    const date = new Date(timestamp);
+                    const diffMs = now - date;
+                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays === 0) return 'Hoy';
+                    if (diffDays === 1) return 'Ayer';
+                    if (diffDays < 7) return `Hace ${diffDays} días`;
+                    if (diffDays < 30) return `Hace ${Math.floor(diffDays / 7)} semanas`;
+                    return date.toLocaleDateString();
+                }
+            };
+            
+            // Inicializar automáticamente si hay repositorio
+            const urlParams = new URLSearchParams(window.location.search);
+            const repoName = urlParams.get('repo');
+            if (repoName) {
+                analysisSystem.init(repoName);
+            }
+            
+            console.log('✅ Sistema de análisis simplificado inicializado');
+        }
+        
+        /**
+         * Función de carga de datos del timeline (compatibilidad)
+         */
+        function loadTimelineData() {
+            console.log('🔄 Cargando datos del timeline...');
+            
+            if (!analysisSystem) {
+                initializeAnalysisSystem();
+            }
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const repoName = urlParams.get('repo');
+            
+            if (repoName) {
+                analysisSystem.init(repoName);
+            } else {
+                console.warn('⚠️ No hay repositorio en la URL');
+                alert('No se encontró repositorio para cargar');
+            }
+        }
+
+        /**
+         * Función para refrescar el timeline (simplificada)
+         */
+        function refreshTimeline() {
+            console.log('🔄 Refrescando timeline...');
+            
+            if (!analysisSystem) {
+                initializeAnalysisSystem();
+                return;
+            }
+            
+            if (analysisSystem.commits.length > 0) {
+                console.log('✅ Re-renderizando timeline con commits existentes');
+                analysisSystem.renderTimeline();
+                
+                if (typeof showNotification === 'function') {
+                    showNotification('Timeline actualizado', 'success');
+                }
+            } else if (analysisSystem.repository) {
+                console.log('🔄 Recargando commits desde servidor...');
+                
+                // Mostrar indicador de carga
+                const refreshBtn = document.getElementById('timeline-refresh');
+                if (refreshBtn) {
+                    refreshBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i><span class="d-none d-md-inline">Cargando...</span>';
+                    refreshBtn.disabled = true;
+                }
+                
+                // Recargar datos
+                analysisSystem.loadCommits().then(() => {
+                    analysisSystem.renderTimeline();
+                    
+                    if (typeof showNotification === 'function') {
+                        showNotification('Timeline actualizado', 'success');
+                    }
+                    
+                    // Restaurar botón
+                    if (refreshBtn) {
+                        refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-1"></i><span class="d-none d-md-inline">Actualizar</span>';
+                        refreshBtn.disabled = false;
+                    }
+                }).catch(error => {
+                    console.error('❌ Error refrescando:', error);
+                    
+                    if (typeof showNotification === 'function') {
+                        showNotification('Error actualizando timeline', 'error');
+                    }
+                    
+                    // Restaurar botón
+                    if (refreshBtn) {
+                        refreshBtn.innerHTML = '<i class="fas fa-sync-alt me-1"></i><span class="d-none d-md-inline">Actualizar</span>';
+                        refreshBtn.disabled = false;
+                    }
+                });
+            } else {
+                console.warn('⚠️ No hay repositorio para refrescar');
+                alert('No hay repositorio cargado para refrescar');
             }
         }
 
@@ -817,6 +1594,393 @@
                 }
             }
         }
+        // Inicialización automática cuando el DOM esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM cargado, inicializando sistema completo...');
+            
+            // Pequeño delay para asegurar que todos los scripts estén cargados
+            setTimeout(() => {
+                // 1. Inicializar sistema de análisis
+                initializeAnalysisSystem();
+                
+                // 2. Inicializar sistema de altura automática
+                initializeAutoHeightSystem();
+                
+                // 3. Mejorar analysisSystem con altura automática
+                enhanceAnalysisSystemWithAutoHeight();
+                
+                console.log('✅ Sistema completo inicializado con altura automática');
+            }, 500);
+        });
+        
+        // También inicializar si la página ya está cargada
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            setTimeout(() => {
+                if (!analysisSystem) {
+                    initializeAnalysisSystem();
+                    initializeAutoHeightSystem();
+                    enhanceAnalysisSystemWithAutoHeight();
+                }
+            }, 100);
+        }
+
+        /**
+         * SOLUCIÓN AUTOMÁTICA: Calculador de altura dinámica para timeline
+         */
+        function initializeAutoHeightSystem() {
+            console.log('🎯 Inicializando sistema de altura automática...');
+            
+            const autoHeightSystem = {
+                // Calcula la altura disponible automáticamente
+                calculateAvailableHeight() {
+                    const viewport = window.innerHeight;
+                    const navbar = document.querySelector('.navbar')?.offsetHeight || 60;
+                    const header = document.querySelector('.timeline-header')?.offsetHeight || 60;
+                    const pagination = document.querySelector('.timeline-pagination')?.offsetHeight || 50;
+                    const padding = 40; // Padding y márgenes adicionales
+                    
+                    const availableHeight = viewport - navbar - header - pagination - padding;
+                    const minHeight = 300; // Altura mínima razonable
+                    const maxHeight = viewport * 0.8; // Máximo 80% del viewport
+                    
+                    return Math.max(minHeight, Math.min(availableHeight, maxHeight));
+                },
+                
+                // Aplica la altura calculada
+                applyOptimalHeight() {
+                    const optimalHeight = this.calculateAvailableHeight();
+                    const container = document.querySelector('.timeline-commits-container');
+                    
+                    if (container) {
+                        // Usar CSS custom properties para máxima flexibilidad
+                        document.documentElement.style.setProperty('--timeline-available-height', `${optimalHeight}px`);
+                        
+                        // Aplicar directamente como fallback
+                        container.style.height = `${optimalHeight}px`;
+                        container.style.maxHeight = `${optimalHeight}px`;
+                        
+                        console.log(`✅ Altura automática aplicada: ${optimalHeight}px`);
+                        return optimalHeight;
+                    }
+                    
+                    return null;
+                },
+                
+                // Configura observadores automáticos
+                setupAutoResize() {
+                    // Throttled resize handler
+                    let resizeTimeout;
+                    window.addEventListener('resize', () => {
+                        clearTimeout(resizeTimeout);
+                        resizeTimeout = setTimeout(() => {
+                            this.applyOptimalHeight();
+                        }, 150);
+                    });
+                    
+                    // Observer para cambios en el DOM que afecten la altura
+                    if (window.ResizeObserver) {
+                        const resizeObserver = new ResizeObserver(() => {
+                            clearTimeout(resizeTimeout);
+                            resizeTimeout = setTimeout(() => {
+                                this.applyOptimalHeight();
+                            }, 100);
+                        });
+                        
+                        const targetElements = [
+                            document.querySelector('.navbar'),
+                            document.querySelector('.timeline-header'),
+                            document.querySelector('.timeline-pagination')
+                        ].filter(Boolean);
+                        
+                        targetElements.forEach(el => resizeObserver.observe(el));
+                    }
+                },
+                
+                // Detecta cuándo el timeline está visible
+                setupVisibilityDetection() {
+                    if (window.IntersectionObserver) {
+                        const observer = new IntersectionObserver((entries) => {
+                            entries.forEach(entry => {
+                                if (entry.isIntersecting) {
+                                    // Timeline visible, aplicar altura óptima
+                                    setTimeout(() => {
+                                        this.applyOptimalHeight();
+                                    }, 50);
+                                }
+                            });
+                        });
+                        
+                        const timelineContainer = document.getElementById('timeline-container-full');
+                        if (timelineContainer) {
+                            observer.observe(timelineContainer);
+                        }
+                    }
+                },
+                
+                // Inicialización completa
+                init() {
+                    console.log('🚀 Iniciando sistema de altura automática...');
+                    
+                    // Aplicar altura inicial
+                    const initialHeight = this.applyOptimalHeight();
+                    
+                    // Configurar detección automática
+                    this.setupAutoResize();
+                    this.setupVisibilityDetection();
+                    
+                    // Aplicar clase CSS para activar reglas especiales
+                    const container = document.getElementById('timeline-container-full');
+                    if (container) {
+                        container.classList.add('timeline-dynamic-height');
+                    }
+                    
+                    console.log(`✅ Sistema de altura automática inicializado (${initialHeight}px)`);
+                    return this;
+                }
+            };
+            
+            // Exportar globalmente para debugging
+            window.timelineAutoHeight = autoHeightSystem;
+            
+            return autoHeightSystem.init();
+        }
+        
+        /**
+         * INTEGRACIÓN: Actualizar analysisSystem para usar altura automática
+         */
+        function enhanceAnalysisSystemWithAutoHeight() {
+            if (!analysisSystem) return;
+            
+            // Sobrescribir el método de renderizado para aplicar altura automática
+            const originalRenderTimeline = analysisSystem.renderTimeline;
+            
+            analysisSystem.renderTimeline = function() {
+                // Llamar al renderizado original
+                originalRenderTimeline.call(this);
+                
+                // Aplicar altura automática después del renderizado
+                setTimeout(() => {
+                    if (window.timelineAutoHeight) {
+                        window.timelineAutoHeight.applyOptimalHeight();
+                    }
+                }, 50);
+            };
+            
+            // Agregar método para recalcular altura manualmente
+            analysisSystem.recalculateHeight = function() {
+                if (window.timelineAutoHeight) {
+                    return window.timelineAutoHeight.applyOptimalHeight();
+                }
+                return null;
+            };
+            
+            console.log('✅ AnalysisSystem mejorado con altura automática');
+        }
+        
+        /**
+         * FUNCIÓN DE UTILIDAD: Activar diferentes modos de altura
+         */
+        function setTimelineHeightMode(mode = 'auto') {
+            const container = document.getElementById('timeline-container-full');
+            if (!container) return;
+            
+            // Limpiar clases existentes
+            container.classList.remove('timeline-auto-height', 'timeline-viewport-optimized', 'timeline-dynamic-height');
+            
+            switch (mode) {
+                case 'grid':
+                    container.classList.add('timeline-auto-height');
+                    console.log('🎯 Modo: CSS Grid automático');
+                    break;
+                    
+                case 'viewport':
+                    container.classList.add('timeline-viewport-optimized');
+                    console.log('🎯 Modo: Viewport optimizado');
+                    break;
+                    
+                case 'dynamic':
+                case 'auto':
+                default:
+                    container.classList.add('timeline-dynamic-height');
+                    if (window.timelineAutoHeight) {
+                        window.timelineAutoHeight.applyOptimalHeight();
+                    }
+                    console.log('🎯 Modo: Altura dinámica automática');
+                    break;
+            }
+        }
+        
+        /**
+         * DEBUGGING: Función para probar diferentes alturas
+         */
+        function debugTimelineHeight() {
+            if (!window.timelineAutoHeight) {
+                console.warn('⚠️ Sistema de altura automática no inicializado');
+                return;
+            }
+            
+            const info = {
+                viewport: window.innerHeight,
+                calculated: window.timelineAutoHeight.calculateAvailableHeight(),
+                currentMode: getCurrentTimelineMode(),
+                container: document.querySelector('.timeline-commits-container')?.style.height
+            };
+            
+            console.table(info);
+            
+            // Mostrar en UI si hay sistema de notificaciones
+            if (typeof showNotification === 'function') {
+                showNotification(
+                    `Altura: ${info.calculated}px (Viewport: ${info.viewport}px)`, 
+                    'info'
+                );
+            }
+            
+            return info;
+        }
+        
+        function getCurrentTimelineMode() {
+            const container = document.getElementById('timeline-container-full');
+            if (!container) return 'none';
+            
+            if (container.classList.contains('timeline-auto-height')) return 'grid';
+            if (container.classList.contains('timeline-viewport-optimized')) return 'viewport';
+            if (container.classList.contains('timeline-dynamic-height')) return 'dynamic';
+            return 'default';
+        }
+        
+        /**
+         * FUNCIONES GLOBALES DE CONSOLA para debugging y control rápido
+         */
+        
+        // Función simple para cambiar altura rápidamente desde consola
+        window.fixTimelineHeight = function() {
+            console.log('🔧 Aplicando fix rápido de altura...');
+            
+            if (window.timelineAutoHeight) {
+                const height = window.timelineAutoHeight.applyOptimalHeight();
+                console.log(`✅ Altura aplicada: ${height}px`);
+                return height;
+            } else {
+                // Fallback simple
+                const container = document.querySelector('.timeline-commits-container');
+                if (container) {
+                    const quickHeight = Math.max(400, window.innerHeight - 200);
+                    container.style.height = `${quickHeight}px`;
+                    container.style.maxHeight = `${quickHeight}px`;
+                    console.log(`✅ Altura fallback aplicada: ${quickHeight}px`);
+                    return quickHeight;
+                }
+            }
+            
+            console.warn('❌ No se pudo aplicar altura');
+            return null;
+        };
+        
+        // Función para resetear estilos y empezar de nuevo
+        window.resetTimelineStyles = function() {
+            console.log('🔄 Reseteando estilos del timeline...');
+            
+            const container = document.querySelector('.timeline-commits-container');
+            if (container) {
+                // Limpiar estilos inline
+                container.style.height = '';
+                container.style.maxHeight = '';
+                container.style.minHeight = '';
+                
+                // Limpiar clases CSS
+                const parent = document.getElementById('timeline-container-full');
+                if (parent) {
+                    parent.classList.remove('timeline-auto-height', 'timeline-viewport-optimized', 'timeline-dynamic-height');
+                }
+                
+                // Limpiar CSS custom properties
+                document.documentElement.style.removeProperty('--timeline-available-height');
+                
+                console.log('✅ Estilos reseteados');
+                
+                // Aplicar altura automática después del reset
+                setTimeout(() => {
+                    window.fixTimelineHeight();
+                }, 100);
+            }
+        };
+        
+        // Función para probar diferentes alturas manualmente
+        window.testTimelineHeight = function(height) {
+            const container = document.querySelector('.timeline-commits-container');
+            if (!container) {
+                console.warn('❌ Container del timeline no encontrado');
+                return;
+            }
+            
+            if (typeof height === 'number') {
+                container.style.height = `${height}px`;
+                container.style.maxHeight = `${height}px`;
+                console.log(`🧪 Altura de prueba aplicada: ${height}px`);
+            } else if (height === 'full') {
+                container.style.height = `${window.innerHeight - 150}px`;
+                container.style.maxHeight = `${window.innerHeight - 150}px`;
+                console.log(`🧪 Altura completa aplicada: ${window.innerHeight - 150}px`);
+            } else if (height === 'half') {
+                container.style.height = `${window.innerHeight / 2}px`;
+                container.style.maxHeight = `${window.innerHeight / 2}px`;
+                console.log(`🧪 Media altura aplicada: ${window.innerHeight / 2}px`);
+            } else {
+                console.log('📝 Uso: testTimelineHeight(500) o testTimelineHeight("full") o testTimelineHeight("half")');
+            }
+        };
+        
+        // Información rápida del estado actual
+        window.timelineInfo = function() {
+            const container = document.querySelector('.timeline-commits-container');
+            const parent = document.getElementById('timeline-container-full');
+            
+            const info = {
+                containerExists: !!container,
+                currentHeight: container?.style.height || 'CSS default',
+                currentMaxHeight: container?.style.maxHeight || 'CSS default',
+                viewportHeight: window.innerHeight,
+                activeMode: getCurrentTimelineMode(),
+                autoHeightActive: !!window.timelineAutoHeight,
+                commitsVisible: document.querySelectorAll('.timeline-commit-item').length
+            };
+            
+            console.table(info);
+            return info;
+        };
+        
+        // Ayuda rápida
+        window.timelineHelp = function() {
+            const commands = [
+                '📖 COMANDOS DISPONIBLES EN CONSOLA:',
+                '',
+                '🔧 fixTimelineHeight() - Aplica altura óptima automáticamente',
+                '🔄 resetTimelineStyles() - Resetea todos los estilos del timeline',
+                '🧪 testTimelineHeight(pixels) - Prueba una altura específica',
+                '📊 timelineInfo() - Muestra información del estado actual',
+                '🎯 setTimelineHeightMode("auto"|"grid"|"viewport") - Cambia modo',
+                '🐛 debugTimelineHeight() - Información detallada para debugging',
+                '',
+                '💡 EJEMPLOS:',
+                '   fixTimelineHeight()',
+                '   testTimelineHeight(600)',
+                '   testTimelineHeight("full")',
+                '   setTimelineHeightMode("viewport")',
+                '',
+                '🔍 Para ver esta ayuda de nuevo: timelineHelp()'
+            ];
+            
+            commands.forEach(cmd => console.log(cmd));
+        };
+        
+        // Mostrar ayuda automáticamente la primera vez
+        setTimeout(() => {
+            if (window.location.search.includes('debug') || localStorage.getItem('timeline-show-help') !== 'false') {
+                console.log('\n🎯 SISTEMA DE ALTURA AUTOMÁTICA CARGADO');
+                console.log('💡 Escribe timelineHelp() en la consola para ver comandos disponibles\n');
+            }
+        }, 2000);
     </script>
 </body>
 </html> 
