@@ -43,8 +43,33 @@ class HeaderComponent extends BaseComponent {
             this.updateRealtimeStatus(true);
         });
 
+        this.subscribe('realtime:confirmed', (data) => {
+            console.log('✅ Conexión confirmada por servidor:', data);
+            this.updateRealtimeStatus(true, 'Conectado y verificado');
+        });
+
+        this.subscribe('realtime:heartbeat', (data) => {
+            console.log('💓 Heartbeat:', data.payload?.message);
+            this.updateRealtimeStatus(true, 'Conexión activa');
+        });
+
+        this.subscribe('realtime:test', (data) => {
+            console.log('🧪 Test event:', data.payload?.message);
+            // Mostrar notificación temporal de evento de prueba
+            this.emit('notification:show', {
+                message: `Evento de prueba: ${data.payload?.message}`,
+                type: 'info',
+                timeout: 3000
+            });
+        });
+
+        this.subscribe('realtime:error', (error) => {
+            console.error('❌ Error tiempo real:', error);
+            this.updateRealtimeStatus(false, 'Error de conexión');
+        });
+
         this.subscribe('realtime:disconnected', () => {
-            this.updateRealtimeStatus(false);
+            this.updateRealtimeStatus(false, 'Desconectado');
         });
 
         this.subscribe('github:rateLimit', (data) => {
@@ -176,15 +201,19 @@ class HeaderComponent extends BaseComponent {
         }
     }
 
-    updateRealtimeStatus(connected) {
+    updateRealtimeStatus(connected, message = null) {
         const statusEl = this.element.querySelector('#realtime-status');
         if (statusEl) {
             if (connected) {
                 statusEl.className = 'status-indicator status-success';
-                statusEl.innerHTML = '<i class="fas fa-circle"></i><span>Conectado</span>';
+                const displayMessage = message || 'Conectado';
+                statusEl.innerHTML = `<i class="fas fa-circle"></i><span>${displayMessage}</span>`;
+                statusEl.title = `Tiempo real: ${displayMessage}`;
             } else {
                 statusEl.className = 'status-indicator status-error';
-                statusEl.innerHTML = '<i class="fas fa-circle"></i><span>Desconectado</span>';
+                const displayMessage = message || 'Desconectado';
+                statusEl.innerHTML = `<i class="fas fa-circle"></i><span>${displayMessage}</span>`;
+                statusEl.title = `Tiempo real: ${displayMessage}`;
             }
         }
     }

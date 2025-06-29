@@ -40,15 +40,25 @@ public class RepositoryController {
      */
     @GetMapping(value = "/commits", produces = MediaType.APPLICATION_JSON_VALUE)
     public Mono<List<Commit>> getCommits(@RequestParam("repo") String repoParam, Principal principal) {
+        log.info("🔄 Solicitando commits para: {}", repoParam);
+        
         String[] parts = repoParam.split("/");
         if (parts.length != 2) {
+            log.error("❌ Formato inválido de repositorio: {}", repoParam);
             return Mono.error(new IllegalArgumentException("Parámetro 'repo' inválido. Debe ser 'owner/repo'."));
         }
         String owner = parts[0];
         String repo = parts[1];
         
+        log.info("📊 Obteniendo commits para: {}/{}", owner, repo);
+        
         // Usar servicio de caché que internamente maneja OAuth2
-        return commitCacheService.getCommits(owner, repo, principal).collectList();
+        return commitCacheService.getCommits(owner, repo, principal)
+            .collectList()
+            .doOnNext(commits -> log.info("✅ Commits obtenidos: {} commits para {}/{}", 
+                commits.size(), owner, repo))
+            .doOnError(error -> log.error("❌ Error obteniendo commits para {}/{}: {}", 
+                owner, repo, error.getMessage()));
     }
 
     /**

@@ -13,8 +13,8 @@
             
             <!-- Panel de control lateral -->
             <div class="col-xl-3 col-lg-4 col-md-12">
-                <!-- Sección de entrada de repositorio -->
-                <div class="card modern-card mb-4 fade-in">
+                <!-- Sección de entrada de repositorio (solo si no viene predefinido) -->
+                <div class="card modern-card mb-4 fade-in" id="repo-selector-panel">
                     <div class="card-header modern-card-header">
                         <h6 class="card-title mb-0 d-flex align-items-center">
                             <i class="fas fa-search me-2"></i>
@@ -51,6 +51,41 @@
                                 <i class="fas fa-arrow-left me-2"></i>
                                 Volver al Dashboard
                             </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel de repositorio seleccionado (cuando viene del dashboard) -->
+                <div class="card modern-card mb-4 fade-in" id="selected-repo-panel" style="display: none;">
+                    <div class="card-header modern-card-header">
+                        <h6 class="card-title mb-0 d-flex align-items-center">
+                            <i class="fas fa-code-branch me-2"></i>
+                            Repositorio Seleccionado
+                        </h6>
+                    </div>
+                    
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <i class="fab fa-github fa-2x me-3 text-muted"></i>
+                            <div>
+                                <h6 class="mb-0" id="selected-repo-name">repository/name</h6>
+                                <small class="text-muted">Analizando automáticamente...</small>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex gap-2">
+                            <a href="/dashboard" class="btn btn-outline-secondary flex-fill">
+                                <i class="fas fa-arrow-left me-1"></i>
+                                Dashboard
+                            </a>
+                            <button type="button" class="btn btn-outline-info flex-fill" id="change-repo-btn">
+                                <i class="fas fa-exchange-alt me-1"></i>
+                                Cambiar
+                            </button>
+                            <button type="button" class="btn btn-outline-success flex-fill" onclick="testDirectLoad()">
+                                <i class="fas fa-bug me-1"></i>
+                                Test
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -319,6 +354,15 @@
             // Repositorio inicial desde el servidor
             const initialRepo = /*[[${initialRepo}]]*/ null;
             
+            console.log('🔍 Repositorio inicial detectado:', initialRepo);
+            
+            // Configurar UI según si hay repositorio predefinido
+            if (initialRepo) {
+                setupDirectAnalysisMode(initialRepo);
+            } else {
+                setupManualSelectionMode();
+            }
+            
             // Pasar configuración inicial al sistema de componentes
             if (window.GitStellarPrism && initialRepo) {
                 // Establecer en el estado global para que HeaderComponent se conecte automáticamente
@@ -329,8 +373,405 @@
                 
                 console.log('📁 Repositorio inicial configurado:', initialRepo);
                 console.log('🔗 Estado global actualizado para tiempo real');
+                
+                // Iniciar análisis automático después de un breve delay
+                setTimeout(() => {
+                    startAutomaticAnalysis(initialRepo);
+                }, 1000);
             }
         });
+
+        /**
+         * Configura la UI para análisis directo (viene del dashboard)
+         */
+        function setupDirectAnalysisMode(repoName) {
+            console.log('🎯 Modo análisis directo para:', repoName);
+            
+            // Ocultar panel de selección manual
+            const selectorPanel = document.getElementById('repo-selector-panel');
+            if (selectorPanel) {
+                selectorPanel.style.display = 'none';
+            }
+            
+            // Mostrar panel de repositorio seleccionado
+            const selectedPanel = document.getElementById('selected-repo-panel');
+            const repoNameEl = document.getElementById('selected-repo-name');
+            if (selectedPanel && repoNameEl) {
+                selectedPanel.style.display = 'block';
+                repoNameEl.textContent = repoName;
+            }
+            
+            // Configurar botón para cambiar repositorio
+            const changeBtn = document.getElementById('change-repo-btn');
+            if (changeBtn) {
+                changeBtn.addEventListener('click', () => {
+                    switchToManualMode();
+                });
+            }
+            
+            // Mostrar controles y filtros directamente
+            setTimeout(() => {
+                showAnalysisControls();
+            }, 500);
+        }
+
+        /**
+         * Configura la UI para selección manual
+         */
+        function setupManualSelectionMode() {
+            console.log('📝 Modo selección manual');
+            
+            // Mostrar panel de selección
+            const selectorPanel = document.getElementById('repo-selector-panel');
+            if (selectorPanel) {
+                selectorPanel.style.display = 'block';
+            }
+            
+            // Ocultar panel de repositorio seleccionado
+            const selectedPanel = document.getElementById('selected-repo-panel');
+            if (selectedPanel) {
+                selectedPanel.style.display = 'none';
+            }
+        }
+
+        /**
+         * Cambia de modo directo a manual
+         */
+        function switchToManualMode() {
+            setupManualSelectionMode();
+            
+            // Limpiar estado
+            if (window.GitStellarPrism) {
+                const stateManager = AppStateManager.getInstance();
+                stateManager.setState({ currentRepo: null });
+            }
+            
+            // Limpiar visualización
+            clearVisualization();
+        }
+
+        /**
+         * Inicia el análisis automático del repositorio
+         */
+        function startAutomaticAnalysis(repoName) {
+            console.log('🚀 Iniciando análisis automático de:', repoName);
+            
+            // Mostrar indicador de carga
+            const loadingIndicator = document.getElementById('loading-indicator');
+            const loadingStatus = document.getElementById('loading-status');
+            
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'block';
+                if (loadingStatus) {
+                    loadingStatus.textContent = `Analizando ${repoName}...`;
+                }
+            }
+            
+            // Intentar método directo primero (más simple)
+            if (typeof loadCommits === 'function') {
+                console.log('✅ Método directo: usando loadCommits inmediatamente');
+                loadCommits(repoName);
+                setTimeout(() => completeAnalysis(repoName), 2000);
+            } else {
+                console.log('⚠️ Método con verificaciones: esperando dependencias');
+                // Cargar datos reales del repositorio con verificaciones
+                loadRealRepositoryData(repoName);
+            }
+        }
+
+        /**
+         * Carga real del repositorio usando la función loadCommits existente
+         */
+        async function loadRealRepositoryData(repoName) {
+            const loadingProgress = document.getElementById('loading-progress');
+            const loadingStatus = document.getElementById('loading-status');
+            
+            try {
+                // Validar formato de repositorio
+                if (!repoName || !repoName.includes('/')) {
+                    throw new Error('Formato de repositorio inválido. Use: owner/repo');
+                }
+                
+                // Actualizar estado
+                if (loadingStatus) {
+                    loadingStatus.textContent = `Cargando commits de ${repoName}...`;
+                }
+                if (loadingProgress) {
+                    loadingProgress.style.width = '30%';
+                }
+                
+                // Esperar a que se carguen los scripts necesarios
+                await waitForDependencies();
+                
+                if (loadingProgress) {
+                    loadingProgress.style.width = '60%';
+                }
+                
+                // Usar la función loadCommits existente que ya maneja todo
+                console.log('🔄 Cargando commits usando loadCommits para:', repoName);
+                if (typeof loadCommits === 'function') {
+                    console.log('✅ loadCommits disponible - ejecutando...');
+                    // loadCommits ya maneja la carga, renderización y tiempo real
+                    loadCommits(repoName);
+                } else {
+                    console.warn('⚠️ loadCommits no disponible, usando método directo');
+                    // Fallback: llamada directa a la API
+                    await loadCommitsDirectly(repoName);
+                }
+                
+                if (loadingProgress) {
+                    loadingProgress.style.width = '100%';
+                }
+                
+                // Dar tiempo para que loadCommits haga su trabajo
+                setTimeout(() => {
+                    completeAnalysis(repoName);
+                }, 1000);
+                
+            } catch (error) {
+                console.error('❌ Error cargando repositorio:', error);
+                
+                if (loadingStatus) {
+                    loadingStatus.textContent = `Error: ${error.message}`;
+                    loadingStatus.className = 'text-muted small mb-0 text-danger';
+                }
+                
+                // Mostrar error pero permitir continuar
+                setTimeout(() => {
+                    completeAnalysis(repoName);
+                }, 1000);
+            }
+        }
+        
+        /**
+         * Carga commits directamente sin depender de loadCommits
+         */
+        async function loadCommitsDirectly(repoName) {
+            console.log('🔄 Cargando commits directamente para:', repoName);
+            
+            try {
+                const response = await fetch(`/api/repository/commits?repo=${encodeURIComponent(repoName)}`);
+                console.log('📡 Respuesta del servidor:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const commits = await response.json();
+                console.log('📊 Commits recibidos:', commits.length);
+                console.log('📄 Primeros 3 commits:', commits.slice(0, 3));
+                
+                if (commits.length === 0) {
+                    console.warn('⚠️ No se encontraron commits para el repositorio');
+                    return;
+                }
+                
+                // Intentar renderizar si la función está disponible
+                if (typeof renderCommitsVisualization === 'function') {
+                    console.log('🎨 Renderizando con renderCommitsVisualization');
+                    renderCommitsVisualization(commits);
+                } else {
+                    console.warn('⚠️ renderCommitsVisualization no disponible');
+                    // Crear nodos de prueba con los datos reales
+                    createTestNodesWithData(commits);
+                }
+                
+            } catch (error) {
+                console.error('❌ Error cargando commits directamente:', error);
+                throw error;
+            }
+        }
+        
+        /**
+         * Crea nodos de prueba usando datos reales de commits
+         */
+        function createTestNodesWithData(commits) {
+            console.log('🧪 Creando nodos de prueba con datos reales:', commits.length);
+            
+            if (!window.scene) {
+                console.error('❌ Scene no disponible para crear nodos');
+                return;
+            }
+            
+            // Limpiar escena anterior
+            if (typeof clearScene === 'function') {
+                clearScene();
+            }
+            
+            // Crear geometría y material para los nodos
+            const geometry = new THREE.SphereGeometry(2, 32, 16);
+            
+            commits.slice(0, 20).forEach((commit, index) => { // Máximo 20 nodos
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: new THREE.Color().setHSL(index / commits.length, 0.7, 0.5) 
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                // Posición en espiral
+                const angle = (index / commits.length) * Math.PI * 4;
+                const radius = 20 + index * 2;
+                mesh.position.set(
+                    Math.cos(angle) * radius,
+                    index * 5 - commits.length * 2.5,
+                    Math.sin(angle) * radius
+                );
+                
+                // Agregar metadata del commit
+                mesh.userData = {
+                    commit: commit,
+                    hash: commit.hash,
+                    message: commit.message,
+                    author: commit.author?.name || 'Unknown'
+                };
+                
+                window.scene.add(mesh);
+                
+                if (window.nodes) {
+                    window.nodes.push(mesh);
+                }
+                
+                console.log(`✅ Nodo ${index + 1} creado para commit: ${commit.hash.substring(0, 7)}`);
+            });
+            
+            // Ajustar cámara si la función está disponible
+            if (typeof adjustCameraToFitScene === 'function') {
+                adjustCameraToFitScene();
+            }
+            
+            console.log(`✅ ${Math.min(commits.length, 20)} nodos de prueba creados`);
+        }
+
+        /**
+         * Espera a que se carguen las dependencias necesarias
+         */
+        function waitForDependencies() {
+            return new Promise((resolve) => {
+                let attempts = 0;
+                const maxAttempts = 30; // 3 segundos máximo
+                
+                const checkDeps = () => {
+                    attempts++;
+                    
+                    const loadCommitsAvailable = typeof loadCommits === 'function';
+                    const renderAvailable = typeof renderCommitsVisualization === 'function';
+                    const sceneAvailable = !!window.scene;
+                    const cameraAvailable = !!window.camera;
+                    const rendererAvailable = !!window.renderer;
+                    
+                    // Solo mostrar log cada 10 intentos para no saturar la consola
+                    if (attempts === 1 || attempts % 10 === 0) {
+                        console.log(`🔍 Checking dependencies (attempt ${attempts}):`, {
+                            loadCommits: loadCommitsAvailable,
+                            renderVisualization: renderAvailable,
+                            scene: sceneAvailable,
+                            camera: cameraAvailable,
+                            renderer: rendererAvailable
+                        });
+                    }
+                    
+                    if (loadCommitsAvailable && renderAvailable && sceneAvailable && cameraAvailable && rendererAvailable) {
+                        console.log('✅ Todas las dependencias están listas');
+                        resolve();
+                    } else if (attempts >= maxAttempts) {
+                        console.warn('⚠️ Timeout esperando dependencias, continuando de todas formas');
+                        resolve();
+                    } else {
+                        setTimeout(checkDeps, 100);
+                    }
+                };
+                checkDeps();
+            });
+        }
+
+        /**
+         * Completa el análisis y muestra los controles
+         */
+        function completeAnalysis(repoName) {
+            console.log('✅ Análisis completado para:', repoName);
+            
+            // Ocultar loading
+            const loadingIndicator = document.getElementById('loading-indicator');
+            if (loadingIndicator) {
+                loadingIndicator.style.display = 'none';
+            }
+            
+            // Mostrar controles
+            showAnalysisControls();
+            
+            // Actualizar panel seleccionado
+            const selectedPanel = document.getElementById('selected-repo-panel');
+            if (selectedPanel) {
+                const statusEl = selectedPanel.querySelector('small');
+                if (statusEl) {
+                    statusEl.textContent = 'Análisis completado';
+                    statusEl.className = 'text-success';
+                }
+            }
+        }
+
+        /**
+         * Muestra los controles de análisis
+         */
+        function showAnalysisControls() {
+            const controlsPanel = document.getElementById('visualization-controls');
+            const filtersPanel = document.getElementById('filters-section');
+            
+            if (controlsPanel) {
+                controlsPanel.style.display = 'block';
+            }
+            if (filtersPanel) {
+                filtersPanel.style.display = 'block';
+            }
+        }
+
+        /**
+         * Limpia la visualización
+         */
+        function clearVisualization() {
+            if (typeof clearScene === 'function') {
+                clearScene();
+            }
+        }
+
+        /**
+         * Prueba la carga directa de commits (función de debugging)
+         */
+        async function testDirectLoad() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const repoName = urlParams.get('repo');
+            
+            if (!repoName) {
+                console.error('❌ No se encontró repositorio en URL');
+                alert('No se encontró repositorio para probar');
+                return;
+            }
+            
+            console.log('🧪 PRUEBA DIRECTA - Iniciando para:', repoName);
+            
+            try {
+                // Mostrar loading
+                const loadingIndicator = document.getElementById('loading-indicator');
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'block';
+                }
+                
+                await loadCommitsDirectly(repoName);
+                
+                console.log('✅ PRUEBA DIRECTA - Completada exitosamente');
+                alert('Prueba completada. Revisa la consola y la visualización 3D.');
+                
+            } catch (error) {
+                console.error('❌ PRUEBA DIRECTA - Error:', error);
+                alert(`Error en prueba: ${error.message}`);
+            } finally {
+                // Ocultar loading
+                const loadingIndicator = document.getElementById('loading-indicator');
+                if (loadingIndicator) {
+                    loadingIndicator.style.display = 'none';
+                }
+            }
+        }
 
         // Función global para exportar análisis (mantenida para compatibilidad)
         async function exportAnalysis(type) {

@@ -77,11 +77,17 @@ function initVisualization() {
     scene = new THREE.Scene();
     scene.background = new THREE.Color(config.backgroundColor);
     console.log('✅ Escena creada');
+    
+    // Exponer en window para acceso global
+    window.scene = scene;
 
     // Crear cámara
     camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 2000);
     camera.position.set(0, 0, 100);
     console.log(`✅ Cámara creada en posición (${camera.position.x}, ${camera.position.y}, ${camera.position.z})`);
+    
+    // Exponer en window para acceso global
+    window.camera = camera;
 
     // Crear renderer
     try {
@@ -100,6 +106,9 @@ function initVisualization() {
         // Verificar que el canvas es visible
         const canvasStyle = window.getComputedStyle(renderer.domElement);
         console.log(`👁️ Canvas visible: display=${canvasStyle.display}, visibility=${canvasStyle.visibility}`);
+        
+        // Exponer en window para acceso global
+        window.renderer = renderer;
         
     } catch (error) {
         console.error('❌ Error creando WebGL renderer:', error);
@@ -172,6 +181,10 @@ function initVisualization() {
     renderer.domElement.addEventListener('mousemove', onMouseMove);
     renderer.domElement.addEventListener('click', onMouseClick);
 
+    // Exponer arrays globales en window para debugging
+    window.nodes = nodes;
+    window.connections = connections;
+    
     // Iniciar animación
     animate();
     
@@ -977,38 +990,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
-    // Botón de nodos de prueba para debugging
-    document.getElementById('btnDebugNodes').addEventListener('click', () => {
-        console.log('🧪 Botón de debug presionado');
-        
-        // Diagnóstico completo del estado
-        console.log('🔍 DIAGNÓSTICO COMPLETO:');
-        console.log(`- Scene: ${scene ? 'OK' : 'NULL'}`);
-        console.log(`- Camera: ${camera ? 'OK' : 'NULL'}`);
-        console.log(`- Renderer: ${renderer ? 'OK' : 'NULL'}`);
-        console.log(`- Controls: ${controls ? 'OK' : 'NULL'}`);
-        
-        const container = document.getElementById('visualization-container');
-        if (container) {
-            const rect = container.getBoundingClientRect();
-            console.log(`- Container: ${rect.width}x${rect.height} px`);
-            console.log(`- Container visible: ${rect.width > 0 && rect.height > 0}`);
-        }
-        
-        if (renderer && renderer.domElement) {
-            const canvas = renderer.domElement;
-            console.log(`- Canvas: ${canvas.width}x${canvas.height} px`);
-            console.log(`- Canvas en DOM: ${document.body.contains(canvas)}`);
+    // Botón de nodos de prueba para debugging (opcional)
+    const btnDebugNodes = document.getElementById('btnDebugNodes');
+    if (btnDebugNodes) {
+        btnDebugNodes.addEventListener('click', () => {
+            console.log('🧪 Botón de debug presionado');
             
-            const canvasStyle = window.getComputedStyle(canvas);
-            console.log(`- Canvas display: ${canvasStyle.display}`);
-            console.log(`- Canvas visibility: ${canvasStyle.visibility}`);
-            console.log(`- Canvas opacity: ${canvasStyle.opacity}`);
-        }
-        
-        clearScene();
-        createTestNodes();
-    });
+            // Diagnóstico completo del estado
+            console.log('🔍 DIAGNÓSTICO COMPLETO:');
+            console.log(`- Scene: ${scene ? 'OK' : 'NULL'}`);
+            console.log(`- Camera: ${camera ? 'OK' : 'NULL'}`);
+            console.log(`- Renderer: ${renderer ? 'OK' : 'NULL'}`);
+            console.log(`- Controls: ${controls ? 'OK' : 'NULL'}`);
+            
+            const container = document.getElementById('visualization-container');
+            if (container) {
+                const rect = container.getBoundingClientRect();
+                console.log(`- Container: ${rect.width}x${rect.height} px`);
+                console.log(`- Container visible: ${rect.width > 0 && rect.height > 0}`);
+            }
+            
+            if (renderer && renderer.domElement) {
+                const canvas = renderer.domElement;
+                console.log(`- Canvas: ${canvas.width}x${canvas.height} px`);
+                console.log(`- Canvas en DOM: ${document.body.contains(canvas)}`);
+                
+                const canvasStyle = window.getComputedStyle(canvas);
+                console.log(`- Canvas display: ${canvasStyle.display}`);
+                console.log(`- Canvas visibility: ${canvasStyle.visibility}`);
+                console.log(`- Canvas opacity: ${canvasStyle.opacity}`);
+            }
+            
+            clearScene();
+            createTestNodes();
+        });
+    }
     
     // Botón de test del timeline
     const btnTestTimeline = document.getElementById('btnTestTimeline');
@@ -1076,32 +1092,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // Manejar botones flotantes (que son los que están visibles)
-    document.getElementById('btnZoomInFloat').addEventListener('click', () => {
-        console.log('🔍 Zoom In');
-        if (camera) {
-            camera.position.z *= 0.8;
-            console.log(`Cámara zoom in: z=${camera.position.z.toFixed(2)}`);
-        }
-    });
+    const btnZoomInFloat = document.getElementById('btnZoomInFloat');
+    if (btnZoomInFloat) {
+        btnZoomInFloat.addEventListener('click', () => {
+            console.log('🔍 Zoom In');
+            if (camera) {
+                camera.position.z *= 0.8;
+                console.log(`Cámara zoom in: z=${camera.position.z.toFixed(2)}`);
+            }
+        });
+    }
     
-    document.getElementById('btnZoomOutFloat').addEventListener('click', () => {
-        console.log('🔍 Zoom Out');
-        if (camera) {
-            camera.position.z *= 1.2;
-            console.log(`Cámara zoom out: z=${camera.position.z.toFixed(2)}`);
-        }
-    });
+    const btnZoomOutFloat = document.getElementById('btnZoomOutFloat');
+    if (btnZoomOutFloat) {
+        btnZoomOutFloat.addEventListener('click', () => {
+            console.log('🔍 Zoom Out');
+            if (camera) {
+                camera.position.z *= 1.2;
+                console.log(`Cámara zoom out: z=${camera.position.z.toFixed(2)}`);
+            }
+        });
+    }
     
-    document.getElementById('btnResetFloat').addEventListener('click', () => {
-        console.log('🏠 Reset View');
-        if (camera && controls) {
-            camera.position.set(50, 50, 100);
-            camera.lookAt(0, 0, 0);
-            controls.target.set(0, 0, 0);
-            controls.update();
-            console.log('Vista restablecida');
-        }
-    });
+    const btnResetFloat = document.getElementById('btnResetFloat');
+    if (btnResetFloat) {
+        btnResetFloat.addEventListener('click', () => {
+            console.log('🏠 Reset View');
+            if (camera && controls) {
+                camera.position.set(50, 50, 100);
+                camera.lookAt(0, 0, 0);
+                controls.target.set(0, 0, 0);
+                controls.update();
+                console.log('Vista restablecida');
+            }
+        });
+    }
     
     // Manejar botones del timeline
     const timelineExport = document.getElementById('timeline-export');

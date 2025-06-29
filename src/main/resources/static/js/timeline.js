@@ -172,10 +172,15 @@ function initTimeline() {
         .attr('flood-color', '#000000')
         .attr('flood-opacity', 0.3);
     
-    // Configurar zoom y pan
+    // Configurar zoom y pan con verificaciones adicionales
     timelineZoom = d3.zoom()
         .scaleExtent(timelineConfig.zoomExtent)
-        .on('zoom', handleTimelineZoom);
+        .on('zoom', (event) => {
+            // Verificación adicional antes de manejar zoom
+            if (timelineScale && event && event.transform) {
+                handleTimelineZoom(event);
+            }
+        });
     
     timelineSvg.call(timelineZoom);
     
@@ -727,9 +732,17 @@ function handleCommitClick(event, d) {
 function handleTimelineZoom(event) {
     const { transform } = event;
     
+    // Verificar que timelineScale esté inicializado
+    if (!timelineScale) {
+        console.warn('⚠️ TimelineScale no inicializado, ignorando zoom');
+        return;
+    }
+    
     // Aplicar transformación a los elementos principales
-    d3.select('.timeline-content')
-        .attr('transform', transform);
+    const timelineContent = d3.select('.timeline-content');
+    if (!timelineContent.empty()) {
+        timelineContent.attr('transform', transform);
+    }
     
     // Actualizar escala de tiempo
     const newScale = transform.rescaleX(timelineScale);
@@ -739,11 +752,14 @@ function handleTimelineZoom(event) {
         .tickFormat(d3.timeFormat('%d/%m/%y'))
         .ticks(Math.min(15, Math.floor(newScale.range()[1] / 80)));
     
-    d3.select('.timeline-axis-labels')
-        .call(timeAxis)
-        .selectAll('text')
-        .style('font-size', '11px')
-        .style('fill', '#6c757d');
+    const axisLabels = d3.select('.timeline-axis-labels');
+    if (!axisLabels.empty()) {
+        axisLabels
+            .call(timeAxis)
+            .selectAll('text')
+            .style('font-size', '11px')
+            .style('fill', '#6c757d');
+    }
 }
 
 /**

@@ -29,11 +29,34 @@ public class StreamController {
     }
 
     /**
-     * Endpoint SSE básico que envía un latido cada 30s y, de momento, datos simulados.
-     * Se deberá conectar a un broker o a lógica reactiva real más adelante.
+     * Endpoint SSE que envía eventos en tiempo real para un repositorio específico.
+     * Incluye eventos de conexión inicial y heartbeats informativos.
      */
     @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<Event>> streamEvents(@RequestParam("repo") String repoParam) {
+        System.out.println("🔗 Nueva conexión SSE para repositorio: " + repoParam);
+        System.out.println("🔗 EventPublisherService disponible: " + (eventPublisherService != null));
+        
+        // Evento de conexión inicial
+        Event connectionEvent = Event.builder()
+                .id(UUID.randomUUID().toString())
+                .type("CONNECTION_ESTABLISHED")
+                .timestamp(java.time.Instant.now())
+                .repositoryFullName(repoParam)
+                .payload(java.util.Map.of("message", "Conexión establecida para: " + repoParam))
+                .build();
+        
+        System.out.println("✅ Enviando evento de conexión inicial para: " + repoParam);
+        
+        Flux<ServerSentEvent<Event>> initialEvent = Flux.just(
+                ServerSentEvent.<Event>builder()
+                        .id(connectionEvent.getId())
+                        .event("connection")
+                        .data(connectionEvent)
+                        .build()
+        );
+        
+        // Flujo de eventos del publisher
         Flux<ServerSentEvent<Event>> eventFlux = eventPublisherService.flux()
                 .map(event -> ServerSentEvent.<Event>builder()
                         .id(UUID.randomUUID().toString())
@@ -41,12 +64,44 @@ public class StreamController {
                         .data(event)
                         .build());
 
-        // Heartbeat cada 15s
-        Flux<ServerSentEvent<Event>> heartbeat = Flux.interval(Duration.ofSeconds(15))
-                .map(seq -> ServerSentEvent.<Event>builder()
-                        .comment("heartbeat")
-                        .build());
+        // Heartbeat cada 10s con información del repositorio (para pruebas rápidas)
+        Flux<ServerSentEvent<Event>> heartbeat = Flux.interval(Duration.ofSeconds(10))
+                .map(seq -> {
+                    System.out.println("💓 Enviando heartbeat #" + seq + " para: " + repoParam);
+                    Event heartbeatEvent = Event.builder()
+                            .id(UUID.randomUUID().toString())
+                            .type("HEARTBEAT")
+                            .timestamp(java.time.Instant.now())
+                            .repositoryFullName(repoParam)
+                            .payload(java.util.Map.of("message", "Conexión activa", "sequence", seq))
+                            .build();
+                    return ServerSentEvent.<Event>builder()
+                            .id(heartbeatEvent.getId())
+                            .event("heartbeat")
+                            .data(heartbeatEvent)
+                            .build();
+                });
 
-        return Flux.merge(eventFlux, heartbeat);
+        // También enviar un evento de prueba cada 20s para verificar funcionamiento
+        Flux<ServerSentEvent<Event>> testEvent = Flux.interval(Duration.ofSeconds(20))
+                .map(seq -> {
+                    System.out.println("🧪 Enviando evento de prueba #" + seq + " para: " + repoParam);
+                    Event test = Event.builder()
+                            .id(UUID.randomUUID().toString())
+                            .type("TEST_EVENT")
+                            .timestamp(java.time.Instant.now())
+                            .repositoryFullName(repoParam)
+                            .payload(java.util.Map.of("message", "Evento de prueba #" + seq, "sequence", seq))
+                            .build();
+                    return ServerSentEvent.<Event>builder()
+                            .id(test.getId())
+                            .event("test")
+                            .data(test)
+                            .build();
+                });
+
+        return Flux.merge(initialEvent, eventFlux, heartbeat, testEvent)
+                .doOnCancel(() -> System.out.println("🔌 Conexión SSE cancelada para: " + repoParam))
+                .doOnError(error -> System.err.println("❌ Error en SSE para " + repoParam + ": " + error.getMessage()));
     }
 } 

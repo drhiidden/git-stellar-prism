@@ -239,12 +239,25 @@ class GitStellarPrismApp {
     setupErrorHandling() {
         // Errores JavaScript no capturados
         window.addEventListener('error', (event) => {
+            // Verificar si el error es relevante y no es null
+            if (!event.error || 
+                (event.error && event.error.message && event.error.message.includes('Script error')) ||
+                event.filename && event.filename.includes('extensions/')) {
+                // Ignorar errores de script cross-origin o extensiones del navegador
+                return;
+            }
+            
             console.error('Error global JavaScript:', event.error);
             this.handleGlobalError('JavaScript Error', event.error);
         });
 
         // Promesas rechazadas no capturadas
         window.addEventListener('unhandledrejection', (event) => {
+            // Verificar si la razón es relevante
+            if (!event.reason) {
+                return;
+            }
+            
             console.error('Promesa rechazada no capturada:', event.reason);
             this.handleGlobalError('Promise Rejection', event.reason);
         });
@@ -293,7 +306,21 @@ class GitStellarPrismApp {
     handleGlobalError(type, error) {
         const notificationComponent = this.components.get('notification');
         if (notificationComponent) {
-            notificationComponent.showError(`${type}: ${error.message}`);
+            let errorMessage = type;
+            
+            if (error) {
+                if (error.message) {
+                    errorMessage += `: ${error.message}`;
+                } else if (typeof error === 'string') {
+                    errorMessage += `: ${error}`;
+                } else {
+                    errorMessage += `: Error desconocido`;
+                }
+            } else {
+                errorMessage += ': Error sin detalles';
+            }
+            
+            notificationComponent.showError(errorMessage);
         }
     }
 

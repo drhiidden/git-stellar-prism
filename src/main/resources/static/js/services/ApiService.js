@@ -212,38 +212,53 @@ class RealtimeService {
             this.disconnect();
         }
 
-        this.lastRepoParam = repoParam;
-        let endpoint = '/api/stream/events';
-        if (repoParam) {
-            endpoint += `?repo=${encodeURIComponent(repoParam)}`;
+        // El endpoint requiere el parámetro repo obligatoriamente
+        if (!repoParam) {
+            console.warn('⚠️ Parámetro repo requerido para conexión tiempo real');
+            this.eventBus.emit('realtime:error', { message: 'Repositorio requerido' });
+            return;
         }
+
+        this.lastRepoParam = repoParam;
+        const endpoint = `/api/stream/events?repo=${encodeURIComponent(repoParam)}`;
+        
+        console.log(`🔗 Intentando conectar a tiempo real: ${endpoint}`);
 
         try {
             this.eventSource = new EventSource(endpoint);
             
             this.eventSource.onopen = (event) => {
-                console.log('🔗 Conexión tiempo real establecida');
+                console.log(`🔗 Conexión tiempo real establecida para: ${repoParam}`);
                 this.isConnected = true;
                 this.reconnectAttempts = 0;
                 this.eventBus.emit('realtime:connected');
             };
 
             this.eventSource.onmessage = (event) => {
+                console.log('📡 Mensaje SSE recibido:', event);
+                console.log('📡 Datos raw:', event.data);
+                console.log('📡 Tipo de evento:', event.type);
+                
                 try {
                     const data = JSON.parse(event.data);
+                    console.log('📡 Evento tiempo real parseado:', data);
                     this.handleRealtimeEvent(data);
                 } catch (error) {
                     console.error('Error parseando evento tiempo real:', error);
+                    console.error('Datos que causaron error:', event.data);
                 }
             };
 
             this.eventSource.onerror = (event) => {
-                console.warn('⚠️ Error en conexión tiempo real:', event);
+                console.error('❌ Error en conexión tiempo real:', event);
+                console.error('ReadyState:', this.eventSource?.readyState);
                 this.isConnected = false;
                 this.eventBus.emit('realtime:error', event);
                 
                 if (this.reconnectAttempts < this.maxReconnectAttempts) {
                     this.scheduleReconnect();
+                } else {
+                    console.error('❌ Máximo de intentos de reconexión alcanzado');
                 }
             };
 
@@ -257,17 +272,30 @@ class RealtimeService {
         const { type, payload } = data;
         
         switch (type) {
+            case 'CONNECTION_ESTABLISHED':
+                console.log('✅ Conexión de tiempo real confirmada por servidor');
+                this.eventBus.emit('realtime:confirmed', data);
+                break;
+            case 'HEARTBEAT':
+                console.log('💓 Heartbeat recibido');
+                this.eventBus.emit('realtime:heartbeat', data);
+                break;
+            case 'TEST_EVENT':
+                console.log('🧪 Evento de prueba recibido:', data);
+                this.eventBus.emit('realtime:test', data);
+                break;
             case 'COMMIT_ANALYZED':
-                this.eventBus.emit('analysis:commit', payload);
+                this.eventBus.emit('analysis:commit', payload || data.payload);
                 break;
             case 'REPOSITORY_UPDATED':
-                this.eventBus.emit('repository:updated', payload);
+                this.eventBus.emit('repository:updated', payload || data.payload);
                 break;
             case 'CACHE_INVALIDATED':
-                this.eventBus.emit('cache:invalidated', payload);
+                this.eventBus.emit('cache:invalidated', payload || data.payload);
                 break;
             default:
-                this.eventBus.emit('realtime:event', { type, payload });
+                console.log('📡 Evento tiempo real:', { type, data });
+                this.eventBus.emit('realtime:event', { type, payload: payload || data.payload });
         }
     }
 
