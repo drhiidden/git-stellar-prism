@@ -4,7 +4,6 @@ import com.drhdn.ghvis.model.Commit;
 import com.drhdn.ghvis.model.Issue;
 import com.drhdn.ghvis.model.PullRequest;
 import com.drhdn.ghvis.model.Repository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,17 +36,22 @@ import static org.springframework.security.oauth2.client.web.reactive.function.c
  */
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class GithubService {
 
-    @Qualifier("githubWebClient")
     private final WebClient githubWebClient;
-    
-    @Qualifier("webClient")
     private final WebClient publicWebClient;
     
     @Value("${github.api.token:}")
     private String fallbackGithubToken;
+    
+    /**
+     * Constructor que inyecta correctamente los WebClients configurados.
+     */
+    public GithubService(@Qualifier("githubWebClient") WebClient githubWebClient, 
+                        @Qualifier("webClient") WebClient publicWebClient) {
+        this.githubWebClient = githubWebClient;
+        this.publicWebClient = publicWebClient;
+    }
     
     /**
      * 🔒 SALVAGUARDA DE SEGURIDAD: Valida que solo se realicen operaciones de lectura.

@@ -1,60 +1,144 @@
 /**
  * Visualización de repositorios GitHub con Three.js
+ * Sistema de Git Graph con timeline y visualización de ramas
  */
 
 // Variables globales
 let scene, camera, renderer;
 let commits = [];
 let nodes = [];
+let connections = [];
 let controls;
 let raycaster, mouse;
 let infoTooltip;
 
 // Configuración
 const config = {
-    nodeSize: 5,
+    nodeSize: 6,
     nodeColors: {
         commit: 0x28a745,
-        pr: 0x007bff,
-        issue: 0xdc3545
+        merge: 0x007bff,
+        branch: 0xffc107,
+        tag: 0xdc3545,
+        head: 0x6f42c1
     },
-    backgroundColor: 0x000000,
-    orbitSpeed: 0.001
+    backgroundColor: 0x1a1a1a,
+    gridColor: 0x333333,
+    connectionColor: 0x666666,
+    branchSpacing: 20,
+    commitSpacing: 15,
+    animationSpeed: 0.002
+};
+
+// Variables para git graph
+let gitGraph = {
+    branches: new Map(),
+    commitPositions: new Map(),
+    maxBranchLevel: 0
 };
 
 /**
  * Inicializa la visualización 3D
  */
 function initVisualization() {
+    console.log('🎬 Iniciando inicialización de Three.js...');
+    
     const container = document.getElementById('visualization-container');
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    if (!container) {
+        console.error('❌ No se encontró el contenedor #visualization-container');
+        return;
+    }
+    
+    let width = container.clientWidth;
+    let height = container.clientHeight;
+    
+    // Fallback si las dimensiones son 0
+    if (width === 0 || height === 0) {
+        console.warn('⚠️ Contenedor con dimensiones 0, usando fallback');
+        width = 800;  // Fallback width
+        height = 600; // Fallback height
+        
+        // Forzar dimensiones en el contenedor
+        container.style.width = width + 'px';
+        container.style.height = height + 'px';
+        container.style.minHeight = height + 'px';
+    }
+    
+    console.log(`📐 Dimensiones del contenedor: ${width}x${height}`);
+
+    // Verificar WebGL
+    if (!window.WebGLRenderingContext) {
+        console.error('❌ WebGL no está soportado en este navegador');
+        container.innerHTML = '<div class="alert alert-danger">WebGL no soportado</div>';
+        return;
+    }
 
     // Crear escena
     scene = new THREE.Scene();
     scene.background = new THREE.Color(config.backgroundColor);
+    console.log('✅ Escena creada');
 
     // Crear cámara
-    camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
-    camera.position.z = 100;
+    camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 2000);
+    camera.position.set(0, 0, 100);
+    console.log(`✅ Cámara creada en posición (${camera.position.x}, ${camera.position.y}, ${camera.position.z})`);
 
     // Crear renderer
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(width, height);
-    container.appendChild(renderer.domElement);
+    try {
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(width, height);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        
+        // Verificar que el canvas se creó
+        console.log(`✅ Renderer creado: ${renderer.domElement.width}x${renderer.domElement.height}`);
+        console.log(`🎨 Canvas tag: ${renderer.domElement.tagName}`);
+        
+        container.appendChild(renderer.domElement);
+        console.log('✅ Canvas agregado al DOM');
+        
+        // Verificar que el canvas es visible
+        const canvasStyle = window.getComputedStyle(renderer.domElement);
+        console.log(`👁️ Canvas visible: display=${canvasStyle.display}, visibility=${canvasStyle.visibility}`);
+        
+    } catch (error) {
+        console.error('❌ Error creando WebGL renderer:', error);
+        container.innerHTML = '<div class="alert alert-danger">Error inicializando WebGL</div>';
+        return;
+    }
 
-    // Añadir luces
-    const ambientLight = new THREE.AmbientLight(0x404040);
+    // Añadir luces mejoradas
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
     scene.add(ambientLight);
 
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(1, 1, 1).normalize();
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(50, 50, 100);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
     scene.add(directionalLight);
 
-    // Controles de órbita
+    // Añadir luces de apoyo
+    const pointLight1 = new THREE.PointLight(0x4a90e2, 0.3, 200);
+    pointLight1.position.set(-50, 30, 50);
+    scene.add(pointLight1);
+
+    const pointLight2 = new THREE.PointLight(0x50c878, 0.3, 200);
+    pointLight2.position.set(50, -30, 50);
+    scene.add(pointLight2);
+
+    // Crear grilla de fondo
+    createBackgroundGrid();
+
+    // Controles de órbita mejorados
     controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
+    controls.enableZoom = true;
+    controls.enablePan = true;
+    controls.maxPolarAngle = Math.PI;
+    controls.minDistance = 20;
+    controls.maxDistance = 500;
 
     // Raycaster para interacción
     raycaster = new THREE.Raycaster();
@@ -73,6 +157,19 @@ function initVisualization() {
 
     // Iniciar animación
     animate();
+    
+    console.log('Visualización Git Graph inicializada');
+}
+
+/**
+ * Crea una grilla de fondo para el contexto visual
+ */
+function createBackgroundGrid() {
+    const gridHelper = new THREE.GridHelper(200, 20, config.gridColor, config.gridColor);
+    gridHelper.position.y = -50;
+    gridHelper.material.transparent = true;
+    gridHelper.material.opacity = 0.1;
+    scene.add(gridHelper);
 }
 
 /**
@@ -310,67 +407,248 @@ function createConnections() {
 }
 
 /**
- * Carga los datos de commits desde el servidor
+ * Verifica si las funciones de tiempo real están habilitadas
  */
-function loadCommits(repoUrl) {
-    // Mostrar indicador de carga
-    document.getElementById('loadingIndicator').classList.remove('d-none');
-    
-    // Limpiar escena
-    while(scene.children.length > 0) { 
-        scene.remove(scene.children[0]); 
-    }
-    
-    // Añadir luces nuevamente
-    const ambientLight = new THREE.AmbientLight(0x404040);
-    scene.add(ambientLight);
-    
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-    directionalLight.position.set(1, 1, 1).normalize();
-    scene.add(directionalLight);
-    
-    // Realizar petición al servidor
-    fetch(`/api/repository/commits?repo=${encodeURIComponent(repoUrl)}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Error al cargar los commits');
-            }
-            return response.json();
-        })
+function checkRealtimeStatus() {
+    fetch('/api/user/auth-status')
+        .then(response => response.json())
         .then(data => {
-            commits = data;
-            renderCommits(commits);
-            document.getElementById('loadingIndicator').classList.add('d-none');
+            if (data.authenticated) {
+                // Habilitar funciones de tiempo real
+                window.REALTIME_ENABLED = true;
+                console.log('Usuario autenticado, tiempo real habilitado');
+                
+                // Mostrar indicador de estado
+                showRealtimeStatus(true);
+            } else {
+                window.REALTIME_ENABLED = false;
+                console.log('Usuario no autenticado, tiempo real deshabilitado');
+                showRealtimeStatus(false);
+            }
         })
         .catch(error => {
-            console.error('Error:', error);
-            document.getElementById('loadingIndicator').classList.add('d-none');
-            alert('Error al cargar los datos del repositorio');
+            console.error('Error verificando estado de autenticación:', error);
+            window.REALTIME_ENABLED = false;
+            showRealtimeStatus(false);
         });
 }
 
 /**
- * Renderiza los commits en la visualización
+ * Muestra el estado del tiempo real en la interfaz
  */
-function renderCommits(commits) {
-    nodes = [];
+function showRealtimeStatus(enabled) {
+    const statusElement = document.getElementById('realtime-status');
+    if (statusElement) {
+        if (enabled) {
+            statusElement.className = 'badge bg-success';
+            statusElement.textContent = 'Tiempo Real Activo';
+        } else {
+            statusElement.className = 'badge bg-secondary';
+            statusElement.textContent = 'Solo Lectura';
+        }
+    }
+}
+
+/**
+ * Carga commits con manejo mejorado de errores
+ */
+function loadCommits(repoUrl) {
+    showLoading(true);
     
-    // Crear nodos para cada commit
-    for (const commit of commits) {
-        const node = createCommitNode(commit);
-        scene.add(node);
-        nodes.push(node);
+    // Validar formato de URL del repositorio
+    if (!repoUrl || !repoUrl.includes('/')) {
+        showError('Formato de repositorio inválido. Use: owner/repo');
+        showLoading(false);
+        return;
     }
     
-    // Crear conexiones entre nodos
-    createConnections();
+    // Limpiar visualización anterior
+    clearVisualization();
     
-    // Actualizar filtros
-    updateFilters(commits);
+    const repoParam = repoUrl.replace('https://github.com/', '').replace('.git', '');
     
-    // Renderizar timeline
-    if (typeof renderTimeline === 'function') {
-        renderTimeline(commits);
+    fetch(`/api/repository/commits?repo=${encodeURIComponent(repoParam)}`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(commits => {
+            console.log(`Cargados ${commits.length} commits para ${repoParam}`);
+            
+            if (commits.length === 0) {
+                showError('No se encontraron commits para este repositorio');
+                return;
+            }
+            
+            // Renderizar commits
+            renderCommitsVisualization(commits);
+            
+            // Conectar a eventos en tiempo real si está habilitado
+            if (window.REALTIME_ENABLED) {
+                connectToEventStream(repoParam);
+            }
+            
+            showSuccess(`Visualización cargada: ${commits.length} commits`);
+        })
+        .catch(error => {
+            console.error('Error cargando commits:', error);
+            showError(`Error cargando commits: ${error.message}`);
+        })
+        .finally(() => {
+            showLoading(false);
+        });
+}
+
+/**
+ * Renderiza la visualización de commits en formato git graph
+ */
+function renderCommitsVisualization(commits) {
+    console.log(`🚀 Iniciando renderizado de ${commits.length} commits...`);
+    
+    if (!scene || !camera || !renderer) {
+        console.error('❌ Componentes de Three.js no inicializados');
+        return;
+    }
+    
+    // Limpiar objetos anteriores
+    clearScene();
+    
+    if (commits.length === 0) {
+        console.warn('⚠️ No hay commits para renderizar');
+        return;
+    }
+
+    // Calcular posiciones del git graph
+    console.log('📊 Calculando posiciones del git graph...');
+    calculateGitGraphPositions(commits);
+    
+    // Crear nodos de commits
+    console.log('🔮 Creando nodos de commits...');
+    let nodesCreated = 0;
+    commits.forEach((commit, index) => {
+        const commitNode = createCommitNodeAdvanced(commit, index);
+        if (commitNode) {
+            scene.add(commitNode);
+            nodes.push(commitNode);
+            nodesCreated++;
+            
+            // Log cada 10 nodos para no saturar la consola
+            if (nodesCreated % 10 === 0 || nodesCreated === commits.length) {
+                console.log(`✅ Creados ${nodesCreated}/${commits.length} nodos`);
+            }
+        } else {
+            console.warn(`⚠️ No se pudo crear nodo para commit ${index}: ${commit.hash}`);
+        }
+    });
+    
+    // Verificar que hay nodos en la escena
+    console.log(`📦 Objetos en escena: ${scene.children.length}`);
+    console.log(`🔗 Nodos en array: ${nodes.length}`);
+    
+    // Crear conexiones entre commits
+    console.log('🔗 Creando conexiones...');
+    createGitGraphConnections(commits);
+    
+    // Crear etiquetas de ramas
+    console.log('🏷️ Creando etiquetas de ramas...');
+    createBranchLabels();
+    
+    // Actualizar cámara para encuadrar todos los commits
+    console.log('🎥 Ajustando cámara...');
+    adjustCameraToFitScene();
+    
+    // Forzar un renderizado inmediato
+    if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+        console.log('🎬 Renderizado forzado ejecutado');
+    }
+    
+    console.log(`✅ Git Graph renderizado completado: ${nodes.length} nodos, ${connections.length} conexiones`);
+    
+    // Crear algunos nodos de prueba visibles si no hay nodos
+    if (nodes.length === 0) {
+        console.log('🧪 Creando nodos de prueba...');
+        createTestNodes();
+    }
+}
+
+/**
+ * Limpia la escena 3D
+ */
+function clearScene() {
+    if (scene) {
+        // Limpiar arrays de tracking
+        nodes.length = 0;
+        connections.length = 0;
+        
+        // Remover todos los objetos excepto luces y grid
+        const objectsToRemove = [];
+        scene.traverse((child) => {
+            if (child !== scene && 
+                child.type !== 'AmbientLight' && 
+                child.type !== 'DirectionalLight' &&
+                child.type !== 'PointLight' &&
+                child.type !== 'GridHelper') {
+                objectsToRemove.push(child);
+            }
+        });
+        
+        objectsToRemove.forEach(obj => {
+            scene.remove(obj);
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+                if (obj.material.map) obj.material.map.dispose();
+                obj.material.dispose();
+            }
+        });
+        
+        // Resetear git graph
+        if (gitGraph) {
+            gitGraph.branches.clear();
+            gitGraph.commitPositions.clear();
+            gitGraph.maxBranchLevel = 0;
+        }
+    }
+}
+
+/**
+ * Muestra mensajes de estado
+ */
+function showLoading(isLoading) {
+    const loadingElement = document.getElementById('loading-indicator');
+    if (loadingElement) {
+        loadingElement.style.display = isLoading ? 'block' : 'none';
+    }
+}
+
+function showError(message) {
+    console.error('Error:', message);
+    // Usar showNotification si está disponible, sino fallback
+    if (typeof showNotification === 'function') {
+        showNotification(message, 'error');
+    } else {
+        alert('Error: ' + message);
+    }
+}
+
+function showSuccess(message) {
+    console.log('Success:', message);
+    // Usar showNotification si está disponible
+    if (typeof showNotification === 'function') {
+        showNotification(message, 'success');
+    } else {
+        console.log('Success: ' + message);
+    }
+}
+
+function clearVisualization() {
+    clearScene();
+    
+    const infoPanel = document.getElementById('commit-info');
+    if (infoPanel) {
+        infoPanel.innerHTML = '<p class="text-muted">Selecciona un commit para ver detalles</p>';
     }
 }
 
@@ -522,14 +800,25 @@ function clearFilters() {
 function animate() {
     requestAnimationFrame(animate);
     
+    // Verificar que los componentes existen
+    if (!scene || !camera || !renderer || !controls) {
+        console.warn('⚠️ Componentes de Three.js no disponibles en animate()');
+        return;
+    }
+    
     // Actualizar controles
     controls.update();
     
-    // Rotar ligeramente la escena para efecto de movimiento
-    scene.rotation.y += config.orbitSpeed;
+    // Rotar ligeramente la escena para efecto de movimiento (opcional)
+    // scene.rotation.y += config.animationSpeed;
     
     // Renderizar escena
     renderer.render(scene, camera);
+    
+    // Log periódico para debugging (cada 5 segundos aprox)
+    if (Math.random() < 0.001) {
+        console.log(`🎬 Animando: ${scene.children.length} objetos en escena, ${nodes.length} nodos`);
+    }
 }
 
 /**
@@ -557,6 +846,32 @@ function highlightCommitIn3D(commitHash) {
 }
 
 /**
+ * Verifica que todas las dependencias necesarias estén cargadas
+ */
+function checkDependencies() {
+    const dependencies = {
+        'THREE': typeof THREE !== 'undefined',
+        'THREE.OrbitControls': typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined', 
+        'D3': typeof d3 !== 'undefined'
+    };
+    
+    const missing = [];
+    const success = Object.entries(dependencies).every(([name, available]) => {
+        if (!available) {
+            missing.push(name);
+            return false;
+        }
+        return true;
+    });
+    
+    return {
+        success: missing.length === 0,
+        missing: missing,
+        available: Object.keys(dependencies).filter(name => dependencies[name])
+    };
+}
+
+/**
  * Inicialización cuando el DOM está cargado
  */
 document.addEventListener('DOMContentLoaded', () => {
@@ -566,13 +881,34 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
     
-    // Inicializar visualización
-    initVisualization();
-    
-    // Inicializar timeline
-    if (typeof initTimeline === 'function') {
-        initTimeline();
+    // Verificar dependencias críticas
+    const dependenciesCheck = checkDependencies();
+    if (!dependenciesCheck.success) {
+        console.error('Dependencias faltantes:', dependenciesCheck.missing);
+        
+        // Mostrar notificación si la función está disponible
+        if (typeof showNotification === 'function') {
+            showNotification(`Error: Faltan librerías necesarias: ${dependenciesCheck.missing.join(', ')}`, 'error');
+        } else {
+            // Fallback: mostrar alert
+            alert(`Error: Faltan librerías necesarias: ${dependenciesCheck.missing.join(', ')}`);
+        }
+    } else {
+        console.log('✅ Todas las dependencias cargadas correctamente:', dependenciesCheck.available);
     }
+    
+    // Inicializar con un pequeño delay para asegurar carga completa
+    setTimeout(() => {
+        // Inicializar visualización
+        initVisualization();
+        
+        // Inicializar timeline si D3 está disponible
+        if (typeof initTimeline === 'function' && typeof d3 !== 'undefined') {
+            initTimeline();
+        } else if (typeof initTimeline === 'function') {
+            console.warn('D3.js no disponible, timeline no se inicializará');
+        }
+    }, 100);
     
     // Manejar envío del formulario
     const repoForm = document.getElementById('repoForm');
@@ -597,6 +933,39 @@ document.addEventListener('DOMContentLoaded', () => {
         controls.reset();
     });
     
+    // Botón de nodos de prueba para debugging
+    document.getElementById('btnDebugNodes').addEventListener('click', () => {
+        console.log('🧪 Botón de debug presionado');
+        
+        // Diagnóstico completo del estado
+        console.log('🔍 DIAGNÓSTICO COMPLETO:');
+        console.log(`- Scene: ${scene ? 'OK' : 'NULL'}`);
+        console.log(`- Camera: ${camera ? 'OK' : 'NULL'}`);
+        console.log(`- Renderer: ${renderer ? 'OK' : 'NULL'}`);
+        console.log(`- Controls: ${controls ? 'OK' : 'NULL'}`);
+        
+        const container = document.getElementById('visualization-container');
+        if (container) {
+            const rect = container.getBoundingClientRect();
+            console.log(`- Container: ${rect.width}x${rect.height} px`);
+            console.log(`- Container visible: ${rect.width > 0 && rect.height > 0}`);
+        }
+        
+        if (renderer && renderer.domElement) {
+            const canvas = renderer.domElement;
+            console.log(`- Canvas: ${canvas.width}x${canvas.height} px`);
+            console.log(`- Canvas en DOM: ${document.body.contains(canvas)}`);
+            
+            const canvasStyle = window.getComputedStyle(canvas);
+            console.log(`- Canvas display: ${canvasStyle.display}`);
+            console.log(`- Canvas visibility: ${canvasStyle.visibility}`);
+            console.log(`- Canvas opacity: ${canvasStyle.opacity}`);
+        }
+        
+        clearScene();
+        createTestNodes();
+    });
+    
     // Manejar botones de filtros
     document.getElementById('applyFilters').addEventListener('click', applyFilters);
     document.getElementById('clearFilters').addEventListener('click', clearFilters);
@@ -618,4 +987,414 @@ document.addEventListener('DOMContentLoaded', () => {
             timelineContainer.msRequestFullscreen();
         }
     });
-}); 
+});
+
+/**
+ * Ajusta la cámara para encuadrar toda la escena (FUNCIÓN FALTANTE)
+ */
+function adjustCameraToFitScene() {
+    console.log(`🎥 Ajustando cámara para ${nodes.length} nodos...`);
+    
+    if (nodes.length === 0) {
+        console.warn('No hay nodos para ajustar la cámara');
+        return;
+    }
+
+    // Calcular bounding box de todos los nodos
+    const box = new THREE.Box3();
+    nodes.forEach((node, index) => {
+        box.expandByObject(node);
+        console.log(`Nodo ${index}: posición(${node.position.x.toFixed(1)}, ${node.position.y.toFixed(1)}, ${node.position.z.toFixed(1)})`);
+    });
+
+    // Si no hay nodos visibles, usar valores por defecto
+    if (box.isEmpty()) {
+        console.warn('Bounding box vacío, usando posición por defecto');
+        camera.position.set(0, 0, 100);
+        camera.lookAt(0, 0, 0);
+        return;
+    }
+
+    // Calcular el centro y tamaño de la caja
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+
+    console.log(`📦 Bounding box - Centro: (${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)})`);
+    console.log(`📏 Tamaño: (${size.x.toFixed(1)}, ${size.y.toFixed(1)}, ${size.z.toFixed(1)})`);
+
+    // Calcular la distancia de cámara necesaria
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const fov = camera.fov * (Math.PI / 180);
+    let cameraDistance = Math.max(50, Math.abs(maxDim / Math.sin(fov / 2)) * 2); // Aumentar multiplicador
+
+    // Posicionar la cámara con una vista mejor
+    const cameraOffset = new THREE.Vector3(
+        center.x + cameraDistance * 0.5, 
+        center.y + cameraDistance * 0.3, 
+        center.z + cameraDistance
+    );
+    
+    camera.position.copy(cameraOffset);
+    camera.lookAt(center);
+
+    // Actualizar controles
+    controls.target.copy(center);
+    controls.update();
+
+    console.log(`✅ Cámara ajustada - Posición: (${camera.position.x.toFixed(1)}, ${camera.position.y.toFixed(1)}, ${camera.position.z.toFixed(1)})`);
+    console.log(`🎯 Target: (${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${center.z.toFixed(1)}), distancia: ${cameraDistance.toFixed(1)}`);
+}
+
+/**
+ * Calcula posiciones de commits en estilo git graph
+ */
+function calculateGitGraphPositions(commits) {
+    gitGraph.branches.clear();
+    gitGraph.commitPositions.clear();
+    gitGraph.maxBranchLevel = 0;
+
+    // Ordenar commits por fecha
+    const sortedCommits = [...commits].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    // Asignar posiciones de rama
+    sortedCommits.forEach((commit, index) => {
+        const branchName = commit.branch || 'main';
+        
+        if (!gitGraph.branches.has(branchName)) {
+            gitGraph.branches.set(branchName, {
+                level: gitGraph.maxBranchLevel++,
+                color: generateBranchColor(branchName),
+                commits: []
+            });
+        }
+        
+        const branch = gitGraph.branches.get(branchName);
+        branch.commits.push(commit);
+        
+        // Calcular posición en el grafo con más variación Z
+        const position = {
+            x: index * config.commitSpacing,
+            y: branch.level * config.branchSpacing,
+            z: (Math.sin(index * 0.1) * 10) + (branch.level * 5), // Añadir variación en Z
+            branch: branchName,
+            level: branch.level
+        };
+        
+        gitGraph.commitPositions.set(commit.hash, position);
+    });
+
+    console.log(`Git Graph calculado: ${gitGraph.branches.size} ramas, ${sortedCommits.length} commits`);
+}
+
+/**
+ * Genera un color único para cada rama
+ */
+function generateBranchColor(branchName) {
+    const colors = [
+        0x28a745, // verde
+        0x007bff, // azul
+        0xffc107, // amarillo
+        0xdc3545, // rojo
+        0x6f42c1, // morado
+        0x20c997, // teal
+        0xfd7e14, // naranja
+        0xe83e8c  // rosa
+    ];
+    
+    let hash = 0;
+    for (let i = 0; i < branchName.length; i++) {
+        hash = branchName.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    return colors[Math.abs(hash) % colors.length];
+}
+
+/**
+ * Crea un nodo de commit avanzado con información visual
+ */
+function createCommitNodeAdvanced(commit, index) {
+    // Verificar datos del commit
+    if (!commit || !commit.hash) {
+        console.warn(`⚠️ Commit inválido en índice ${index}:`, commit);
+        return null;
+    }
+    
+    const position = gitGraph.commitPositions.get(commit.hash);
+    if (!position) {
+        console.warn(`⚠️ No se encontró posición para commit ${commit.hash}`);
+        return null;
+    }
+
+    const branch = gitGraph.branches.get(position.branch);
+    if (!branch) {
+        console.warn(`⚠️ No se encontró rama ${position.branch} para commit ${commit.hash}`);
+        return null;
+    }
+    
+    // Geometría basada en el tipo de commit
+    let geometry;
+    if (commit.message && commit.message.toLowerCase().includes('merge')) {
+        geometry = new THREE.OctahedronGeometry(config.nodeSize * 1.2);
+    } else if (commit.message && commit.message.toLowerCase().includes('tag')) {
+        geometry = new THREE.ConeGeometry(config.nodeSize, config.nodeSize * 2, 6);
+    } else {
+        geometry = new THREE.SphereGeometry(config.nodeSize, 16, 16);
+    }
+
+    // Material con efectos visuales mejorados
+    const material = new THREE.MeshPhongMaterial({
+        color: branch.color,
+        shininess: 100,
+        transparent: false, // Cambiar a false para mejor visibilidad
+        opacity: 1.0,      // Opacidad completa
+        emissive: new THREE.Color(branch.color).multiplyScalar(0.1) // Añadir emisividad
+    });
+
+    const commitNode = new THREE.Mesh(geometry, material);
+    
+    // Posicionar el nodo
+    commitNode.position.set(position.x, position.y, position.z);
+    
+    // Log de la posición para debugging
+    if (index < 5) { // Solo los primeros 5 para no saturar
+        console.log(`🔹 Nodo ${index}: hash=${commit.hash.substring(0, 7)}, pos=(${position.x.toFixed(1)}, ${position.y.toFixed(1)}, ${position.z.toFixed(1)}), color=${branch.color.toString(16)}`);
+    }
+    
+    // Añadir datos de usuario
+    commitNode.userData = {
+        ...commit,
+        type: 'commit',
+        branch: position.branch,
+        level: position.level,
+        index: index
+    };
+
+    // Efectos visuales adicionales
+    if (commit.message && commit.message.toLowerCase().includes('merge')) {
+        commitNode.userData.type = 'merge';
+        // Añadir anillo para merges
+        const ringGeometry = new THREE.RingGeometry(config.nodeSize * 1.5, config.nodeSize * 1.8, 16);
+        const ringMaterial = new THREE.MeshBasicMaterial({
+            color: branch.color,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.position.copy(commitNode.position);
+        scene.add(ring);
+        connections.push(ring);
+    }
+
+    // Sombras
+    commitNode.castShadow = true;
+    commitNode.receiveShadow = true;
+
+    return commitNode;
+}
+
+/**
+ * Crea conexiones entre commits en el git graph
+ */
+function createGitGraphConnections(commits) {
+    const sortedCommits = [...commits].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    
+    for (let i = 1; i < sortedCommits.length; i++) {
+        const currentCommit = sortedCommits[i];
+        const previousCommit = sortedCommits[i - 1];
+        
+        const currentPos = gitGraph.commitPositions.get(currentCommit.hash);
+        const previousPos = gitGraph.commitPositions.get(previousCommit.hash);
+        
+        if (currentPos && previousPos) {
+            const connection = createConnection(previousPos, currentPos, currentCommit.branch);
+            if (connection) {
+                scene.add(connection);
+                connections.push(connection);
+            }
+        }
+    }
+}
+
+/**
+ * Crea una conexión visual entre dos commits
+ */
+function createConnection(fromPos, toPos, branchName) {
+    const branch = gitGraph.branches.get(branchName);
+    if (!branch) return null;
+
+    const points = [];
+    points.push(new THREE.Vector3(fromPos.x, fromPos.y, fromPos.z));
+    
+    // Si es el mismo nivel, línea recta
+    if (fromPos.level === toPos.level) {
+        points.push(new THREE.Vector3(toPos.x, toPos.y, toPos.z));
+    } else {
+        // Crear curva para cambios de rama
+        const midX = (fromPos.x + toPos.x) / 2;
+        points.push(new THREE.Vector3(midX, fromPos.y, fromPos.z));
+        points.push(new THREE.Vector3(midX, toPos.y, toPos.z));
+        points.push(new THREE.Vector3(toPos.x, toPos.y, toPos.z));
+    }
+    
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({
+        color: branch.color,
+        linewidth: 2,
+        transparent: true,
+        opacity: 0.7
+    });
+    
+    return new THREE.Line(geometry, material);
+}
+
+/**
+ * Crea etiquetas de ramas
+ */
+function createBranchLabels() {
+    gitGraph.branches.forEach((branch, branchName) => {
+        if (branch.commits.length > 0) {
+            const lastCommit = branch.commits[branch.commits.length - 1];
+            const position = gitGraph.commitPositions.get(lastCommit.hash);
+            
+            if (position) {
+                const label = createTextLabel(branchName, branch.color);
+                label.position.set(position.x + 10, position.y, position.z);
+                scene.add(label);
+                connections.push(label);
+            }
+        }
+    });
+}
+
+/**
+ * Crea una etiqueta de texto 3D
+ */
+function createTextLabel(text, color) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = 256;
+    canvas.height = 64;
+    
+    context.fillStyle = '#ffffff';
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.fillStyle = `#${color.toString(16)}`;
+    context.font = '20px Arial';
+    context.textAlign = 'center';
+    context.fillText(text, canvas.width / 2, canvas.height / 2 + 5);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        transparent: true,
+        opacity: 0.8
+    });
+    
+    const geometry = new THREE.PlaneGeometry(20, 5);
+    return new THREE.Mesh(geometry, material);
+}
+
+/**
+ * Crea nodos de prueba para diagnosticar problemas de visualización
+ */
+function createTestNodes() {
+    console.log('🧪 Creando nodos de prueba para debugging...');
+    
+    // Verificar que los componentes básicos están disponibles
+    if (!scene) {
+        console.error('❌ Scene no está inicializada');
+        return;
+    }
+    if (!camera) {
+        console.error('❌ Camera no está inicializada');
+        return;
+    }
+    if (!renderer) {
+        console.error('❌ Renderer no está inicializado');
+        return;
+    }
+    
+    console.log(`📊 Estado antes de crear nodos: scene.children=${scene.children.length}, nodes.length=${nodes.length}`);
+    
+    // Crear 5 nodos de prueba en posiciones conocidas (más grandes y visibles)
+    const testPositions = [
+        { x: 0, y: 0, z: 0, name: 'Centro' },
+        { x: 30, y: 0, z: 0, name: 'Derecha' },
+        { x: -30, y: 0, z: 0, name: 'Izquierda' },
+        { x: 0, y: 30, z: 0, name: 'Arriba' },
+        { x: 0, y: -30, z: 0, name: 'Abajo' }
+    ];
+    
+    const testColors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff];
+    const colorNames = ['Rojo', 'Verde', 'Azul', 'Amarillo', 'Magenta'];
+    
+    testPositions.forEach((pos, index) => {
+        // Crear geometría MUY grande y visible
+        const geometry = new THREE.SphereGeometry(8, 32, 32);
+        
+        // Usar MeshBasicMaterial para máxima visibilidad (no depende de luces)
+        const material = new THREE.MeshBasicMaterial({ 
+            color: testColors[index],
+            wireframe: false // Sólido para mejor visibilidad
+        });
+        
+        const testNode = new THREE.Mesh(geometry, material);
+        testNode.position.set(pos.x, pos.y, pos.z);
+        
+        // Añadir datos de prueba
+        testNode.userData = {
+            type: 'test',
+            message: `Nodo de prueba ${index + 1}`,
+            hash: `test${index}`,
+            author: 'Sistema de prueba',
+            timestamp: new Date(),
+            branch: 'test',
+            testName: pos.name
+        };
+        
+        // Agregar a la escena
+        scene.add(testNode);
+        nodes.push(testNode);
+        
+        console.log(`🔹 Nodo ${index + 1} (${colorNames[index]}, ${pos.name}): pos=(${pos.x}, ${pos.y}, ${pos.z}), color=#${testColors[index].toString(16)}`);
+    });
+    
+    console.log(`📊 Estado después de crear nodos: scene.children=${scene.children.length}, nodes.length=${nodes.length}`);
+    
+    // Posicionar cámara manualmente para asegurar visibilidad
+    camera.position.set(50, 50, 100);
+    camera.lookAt(0, 0, 0);
+    
+    if (controls) {
+        controls.target.set(0, 0, 0);
+        controls.update();
+    }
+    
+    console.log(`🎥 Cámara posicionada en (${camera.position.x}, ${camera.position.y}, ${camera.position.z}) mirando hacia (0, 0, 0)`);
+    
+    // Forzar renderizado inmediato
+    if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+        console.log('🎬 Renderizado forzado ejecutado');
+        
+        // Información del contexto WebGL
+        const gl = renderer.getContext();
+        console.log(`🔧 WebGL info: ${gl.getParameter(gl.VERSION)}`);
+        console.log(`🔧 Renderer info: ${gl.getParameter(gl.RENDERER)}`);
+    }
+    
+    console.log(`✅ ${testPositions.length} nodos de prueba creados y renderizados`);
+    
+    // Crear un test adicional: agregar un cubo wireframe grande
+    const cubeGeometry = new THREE.BoxGeometry(20, 20, 20);
+    const cubeMaterial = new THREE.MeshBasicMaterial({ 
+        color: 0xffffff, 
+        wireframe: true,
+        linewidth: 3
+    });
+    const testCube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+    testCube.position.set(0, 0, 0);
+    scene.add(testCube);
+    
+    console.log('📦 Cubo wireframe de prueba agregado en el centro');
+} 
