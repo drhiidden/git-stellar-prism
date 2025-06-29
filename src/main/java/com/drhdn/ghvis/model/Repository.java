@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -106,6 +107,11 @@ public class Repository {
      * Distribución de lenguajes (nombre -> bytes)
      */
     private Map<String, Long> languageDistribution;
+    
+    /**
+     * Topics/etiquetas del repositorio para mejor categorización
+     */
+    private List<String> topics;
     
     /**
      * Configuración de visualización

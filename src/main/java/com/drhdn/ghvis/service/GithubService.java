@@ -344,6 +344,7 @@ public class GithubService {
                                 .isPrivate(repo.isPrivate())
                                 .archived(repo.isArchived())
                                 .languageDistribution(languages)
+                                .topics(repo.getTopics()) // Incluir topics del repositorio original
                                 .build();
                             return enhancedRepo;
                         })
@@ -396,6 +397,7 @@ public class GithubService {
                 .fork(getBoolean(map, "fork"))
                 .isPrivate(getBoolean(map, "private"))
                 .archived(getBoolean(map, "archived"))
+                .topics(getStringList(map, "topics"))
                 .build();
     }
     
@@ -570,5 +572,19 @@ public class GithubService {
         if (map == null || !map.containsKey(key)) return Collections.emptyList();
         Object value = map.get(key);
         return value instanceof List ? (List<Map<String, Object>>) value : Collections.emptyList();
+    }
+    
+    @SuppressWarnings("unchecked")
+    private List<String> getStringList(Map<String, Object> map, String key) {
+        if (map == null || !map.containsKey(key)) return Collections.emptyList();
+        Object value = map.get(key);
+        if (value instanceof List) {
+            List<?> list = (List<?>) value;
+            return list.stream()
+                    .filter(item -> item instanceof String)
+                    .map(String.class::cast)
+                    .toList();
+        }
+        return Collections.emptyList();
     }
 } 

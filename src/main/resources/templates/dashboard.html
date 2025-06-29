@@ -7,10 +7,10 @@
     <!-- Navegación usando fragmento -->
     <div th:replace="~{fragments/header :: main-nav}"></div>
 
-    <!-- Contenido principal del Dashboard - Manejado por DashboardComponent -->
-    <div class="container-fluid p-4" id="dashboard-container">
-        <!-- El contenido se renderizará dinámicamente por el componente -->
-        <div class="d-flex justify-content-center py-5">
+    <!-- Contenido principal unificado del Dashboard -->
+    <div class="container-fluid p-4 dashboard-main" id="dashboard-container">
+        <!-- Contenido dinámico manejado por DashboardComponent -->
+        <div class="d-flex justify-content-center py-5" id="initial-loading">
             <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Cargando dashboard...</span>
             </div>
@@ -20,48 +20,254 @@
     <!-- Toast notifications usando fragmento -->
     <div th:replace="~{fragments/header :: toast-notifications}"></div>
 
+    <!-- Modal para analizar repositorio -->
+    <div class="modal fade" id="analyzeModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-search me-2"></i>
+                        Analizar Repositorio
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="analyzeForm">
+                        <div class="mb-3">
+                            <label for="repoUrl" class="form-label">Repositorio</label>
+                            <input type="text" class="form-control" id="repoUrl" 
+                                   placeholder="owner/repository" required>
+                            <div class="form-text">Ejemplo: microsoft/vscode, facebook/react</div>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-rocket me-2"></i>
+                                Comenzar Análisis
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- CSS específico del dashboard -->
     <style>
-        .dashboard-card {
-            transition: all 0.3s ease;
-            cursor: pointer;
+        .dashboard-main {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
         }
-        .dashboard-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-        }
-        .repo-card {
-            border-left: 4px solid #007bff;
-            transition: all 0.3s ease;
-        }
-        .repo-card:hover {
-            border-left-color: #28a745;
-            transform: translateX(5px);
-        }
-        .tech-badge {
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-        }
+        
         .welcome-section {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border-radius: 15px;
             padding: 2rem;
             margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
+        
         .stats-card {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.2);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255,255,255,0.2);
-            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 15px;
             padding: 1.5rem;
             text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+        
+        .unified-section {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        
+        .filters-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            margin: 0;
+        }
+        
+        .filters-content {
+            padding: 2rem;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .repositories-content {
+            padding: 2rem;
+            background: white;
+        }
+        
+        .tech-pill {
+            transition: all 0.3s ease;
+            border-radius: 25px;
+            padding: 0.6rem 1.2rem;
+            margin: 0.3rem;
+            border: 2px solid transparent;
+            cursor: pointer;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+        
+        .tech-pill:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        .tech-pill.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .repo-card {
+            border: none;
+            border-radius: 15px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        
+        .repo-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+        }
+        
+        .repo-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 1px solid #dee2e6;
+            padding: 1.2rem 1.5rem;
+        }
+        
+        .language-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 0.6rem;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .search-box {
+            border-radius: 25px;
+            border: 2px solid #e9ecef;
+            padding: 0.8rem 1.5rem;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+        
+        .search-box:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.3rem rgba(102, 126, 234, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .filter-section {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: #6c757d;
+        }
+        
+        .public-dashboard {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+        
+        .dashboard-card {
+            transition: all 0.3s ease;
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.15);
+        }
+        
+        .tech-badge {
+            font-size: 0.75em;
+            padding: 0.4em 0.8em;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
     </style>
 
     <!-- Scripts usando fragmentos -->
     <div th:replace="~{fragments/header :: base-scripts}"></div>
     <div th:replace="~{fragments/header :: auth-scripts}"></div>
+
+    <!-- Script para inicializar el Dashboard Unificado -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Inicializando Dashboard Unificado...');
+            
+            // Verificar que el sistema de componentes esté cargado
+            if (typeof ComponentFactory !== 'undefined') {
+                // Usar el componente moderno
+                const dashboard = ComponentFactory.create('dashboard', '#dashboard-container', {
+                    showWelcome: true,
+                    showFilters: true,
+                    showStats: true,
+                    autoLoad: true,
+                    unifiedMode: true
+                });
+                
+                dashboard.init().then(() => {
+                    console.log('✅ Dashboard unificado inicializado correctamente');
+                }).catch(error => {
+                    console.error('❌ Error inicializando dashboard:', error);
+                    // Fallback al sistema legacy
+                    initLegacyDashboard();
+                });
+            } else {
+                // Fallback al sistema legacy
+                console.log('📄 Usando sistema legacy del dashboard');
+                initLegacyDashboard();
+            }
+        });
+        
+        // Función para inicializar el dashboard legacy
+        function initLegacyDashboard() {
+            // Usar las funciones del dashboard.js
+            if (typeof initDashboard === 'function') {
+                initDashboard();
+            } else {
+                console.error('❌ No se pudo inicializar ningún sistema de dashboard');
+            }
+        }
+    </script>
 
 </body>
 </html> 
