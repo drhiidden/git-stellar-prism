@@ -2,6 +2,7 @@ package com.drhdn.ghvis.infrastructure.adapter.outbound.repository;
 
 import com.drhdn.ghvis.domain.entity.Technology;
 import com.drhdn.ghvis.domain.port.LanguageRepository;
+import com.drhdn.ghvis.domain.port.RepositoryRepository;
 import com.drhdn.ghvis.domain.port.TechnologyRepository;
 import com.drhdn.ghvis.infrastructure.adapter.outbound.external.GithubApiAdapter;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class GithubTechnologyRepositoryAdapter implements TechnologyRepository {
 
     private final GithubApiAdapter githubApiAdapter;
     private final LanguageRepository languageRepository;
+    private final RepositoryRepository repositoryRepository;
 
     // Mapas de tecnologías conocidas por lenguaje y archivos
     private static final Map<String, Set<String>> LANGUAGE_FRAMEWORKS = Map.of(
@@ -146,9 +148,26 @@ public class GithubTechnologyRepositoryAdapter implements TechnologyRepository {
     public Flux<Technology> getTopTechnologiesByUser(String username, Principal principal, int limit) {
         log.debug("🔍 Obteniendo top {} tecnologías para usuario: {}", limit, username);
         
-        // Implementación básica - requeriría análisis de todos los repositorios del usuario
-        return Flux.<Technology>empty()
-            .doOnComplete(() -> log.debug("✅ Top {} tecnologías obtenidas para usuario: {}", limit, username));
+        return repositoryRepository.findByUser(principal)
+            .flatMap(repository -> detectTechnologies(repository.getOwner(), repository.getName(), principal)
+                .collectList()
+                .onErrorReturn(Collections.emptyList()))
+            .flatMapIterable(list -> list)
+            .groupBy(Technology::getName)
+            .flatMap(group -> group
+                .reduce((t1, t2) -> Technology.builder()
+                    .name(t1.getName())
+                    .category(t1.getCategory())
+                    .language(t1.getLanguage())
+                    .confidence(Math.max(t1.getConfidence(), t2.getConfidence()))
+                    .repositoryOwner(username)
+                    .repositoryName("aggregated")
+                    .detectedAt(java.time.Instant.now())
+                    .build()))
+            .sort((t1, t2) -> Double.compare(t2.getConfidence(), t1.getConfidence()))
+            .take(limit)
+            .doOnComplete(() -> log.debug("✅ Top {} tecnologías obtenidas para usuario: {}", limit, username))
+            .doOnError(error -> log.error("❌ Error obteniendo tecnologías para usuario {}: {}", username, error.getMessage()));
     }
 
     @Override

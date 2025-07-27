@@ -65,8 +65,9 @@ public class GetUserRepositoriesUseCase {
         if (cacheEnabled) {
             return cacheService.getOrFetch(cacheKey, () -> {
                 log.info("🌐 Consultando repositorios frescos para usuario: {}", username);
-                return Mono.just(Collections.emptyList())
-                    .flatMap(ignored -> repositoryRepository.findByUser(principal).collectList());
+                return repositoryRepository.findByUser(principal)
+                    .flatMap(this::enrichRepositoryWithStats)
+                    .collectList();
             })
             .flatMapMany(Flux::fromIterable)
             .doOnComplete(() -> {
@@ -81,6 +82,7 @@ public class GetUserRepositoriesUseCase {
             });
         } else {
             return repositoryRepository.findByUser(principal)
+                .flatMap(this::enrichRepositoryWithStats)
                 .doOnComplete(() -> {
                     log.info("✅ Repositorios obtenidos exitosamente para usuario: {} (RequestId: {})", 
                         username, requestId);
@@ -174,8 +176,9 @@ public class GetUserRepositoriesUseCase {
         if (cacheEnabled) {
             return cacheService.getOrFetch(cacheKey, () -> {
                 log.info("🌐 Consultando repositorios detallados frescos para usuario: {}", username);
-                // TODO: Implementar enriquecimiento de repositorios con detalles
-                return repositoryRepository.findByUser(principal).collectList();
+                return repositoryRepository.findByUser(principal)
+                    .flatMap(this::enrichRepositoryWithStats)
+                    .collectList();
             })
             .flatMapMany(Flux::fromIterable)
             .doOnComplete(() -> {
@@ -190,6 +193,7 @@ public class GetUserRepositoriesUseCase {
             });
         } else {
             return repositoryRepository.findByUser(principal)
+                .flatMap(this::enrichRepositoryWithStats)
                 .doOnComplete(() -> {
                     log.info("✅ Repositorios detallados obtenidos exitosamente para usuario: {} (RequestId: {})", 
                         username, requestId);
@@ -244,5 +248,25 @@ public class GetUserRepositoriesUseCase {
             java.time.Duration.between(startTime, Instant.now()).toMillis(),
             type, error.getMessage(), false, "error");
         eventPublisher.publish(failureEvent).subscribe();
+    }
+
+    /**
+     * Enriquece un repositorio con estadísticas básicas.
+     * Principio SRP: responsabilidad única de enriquecimiento.
+     * Principio DRY: evita duplicar lógica de enriquecimiento.
+     */
+    private Mono<Repository> enrichRepositoryWithStats(Repository repository) {
+        // Por ahora retornamos el repositorio tal como está
+        // En futuras iteraciones se añadirán calls a GitHub API para:
+        // - Actualizar stars, forks, watchers
+        // - Calcular contributors count
+        // - Obtener último commit date
+        // - Detectar tecnologías principales
+        
+        log.debug("📊 Enriqueciendo repositorio: {}/{}", repository.getOwner(), repository.getName());
+        
+        return Mono.just(repository)
+            .doOnSuccess(repo -> log.debug("✅ Repositorio enriquecido: {}/{} ({}⭐)", 
+                repo.getOwner(), repo.getName(), repo.getStargazersCount()));
     }
 } 
