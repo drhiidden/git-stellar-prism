@@ -1,0 +1,10 @@
+.mvn/
+.cursorignore
+
+target/
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
