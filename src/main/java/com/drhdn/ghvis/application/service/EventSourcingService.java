@@ -50,7 +50,7 @@ public class EventSourcingService {
             .sort((e1, e2) -> Long.compare(e1.getVersion(), e2.getVersion()));
         
         // Reconstruir el agregado aplicando los eventos
-        return aggregate.replay(events)
+        return aggregate.<T>replay(events)
             .doOnSuccess(loaded -> log.debug("✅ Agregado cargado: {} ({}) - Versión: {}", 
                                            aggregateType, aggregateId, loaded.getVersion()))
             .doOnError(error -> log.error("❌ Error cargando agregado: {} ({}) - {}", 

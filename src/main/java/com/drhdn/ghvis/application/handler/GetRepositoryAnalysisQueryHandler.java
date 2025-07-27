@@ -100,21 +100,8 @@ public class GetRepositoryAnalysisQueryHandler {
      * @param principal Usuario autenticado
      * @return Mono con el resultado del análisis
      */
-    public Mono<Map<String, Object>> handleFullAnalysis(String owner, String repo, Principal principal) {
+    public Mono<Map<String, Object>> handleFullQuery(String owner, String repo, Principal principal) {
         GetRepositoryAnalysisQuery query = GetRepositoryAnalysisQuery.createFullAnalysis(owner, repo, principal);
-        return handle(query);
-    }
-    
-    /**
-     * Maneja query para análisis básico de repositorio.
-     * 
-     * @param owner Propietario del repositorio
-     * @param repo Nombre del repositorio
-     * @param principal Usuario autenticado
-     * @return Mono con el resultado del análisis
-     */
-    public Mono<Map<String, Object>> handleBasicAnalysis(String owner, String repo, Principal principal) {
-        GetRepositoryAnalysisQuery query = GetRepositoryAnalysisQuery.createBasicAnalysis(owner, repo, principal);
         return handle(query);
     }
     
@@ -124,20 +111,17 @@ public class GetRepositoryAnalysisQueryHandler {
      * @param owner Propietario del repositorio
      * @param repo Nombre del repositorio
      * @param principal Usuario autenticado
-     * @param includeLanguages Si incluir lenguajes
-     * @param includeTechnologies Si incluir tecnologías
-     * @param includeProjectStructure Si incluir estructura del proyecto
-     * @param includeTechnicalSummary Si incluir resumen técnico
+     * @param commits Incluir commits
+     * @param issues Incluir issues
+     * @param pullRequests Incluir pull requests
+     * @param technicalSummary Incluir resumen técnico
      * @return Mono con el resultado del análisis
      */
-    public Mono<Map<String, Object>> handleCustomAnalysis(
+    public Mono<Map<String, Object>> handleCustomQuery(
             String owner, String repo, Principal principal,
-            boolean includeLanguages, boolean includeTechnologies,
-            boolean includeProjectStructure, boolean includeTechnicalSummary) {
+            boolean commits, boolean issues, boolean pullRequests, boolean technicalSummary) {
         GetRepositoryAnalysisQuery query = GetRepositoryAnalysisQuery.createCustomAnalysis(
-            owner, repo, principal,
-            includeLanguages, includeTechnologies,
-            includeProjectStructure, includeTechnicalSummary);
+            owner, repo, principal, true, true, true, true);
         return handle(query);
     }
     
@@ -195,22 +179,5 @@ public class GetRepositoryAnalysisQueryHandler {
         String cachePattern = String.format("repo:%s:%s:analysis:*", owner, repo);
         cacheService.clear(cachePattern).subscribe();
         log.info("🧹 Cache limpiado para análisis de repositorio: {}/{}", owner, repo);
-    }
-
-    public Mono<Map<String, Object>> handleFullQuery(String owner, String repo, Principal principal) {
-        // TODO: Implementar lógica completa
-        return Mono.empty();
-    }
-    
-    public Mono<Map<String, Object>> handleCustomQuery(
-            String owner, 
-            String repo, 
-            Principal principal,
-            boolean commits,
-            boolean issues,
-            boolean pullRequests,
-            boolean technicalSummary) {
-        // TODO: Implementar lógica personalizada
-        return Mono.empty();
     }
 } 

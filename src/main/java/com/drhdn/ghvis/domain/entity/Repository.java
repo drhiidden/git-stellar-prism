@@ -2,6 +2,7 @@ package com.drhdn.ghvis.domain.entity;
 
 import com.drhdn.ghvis.domain.event.AbstractEventSourcedAggregate;
 import com.drhdn.ghvis.domain.event.DomainEvent;
+import com.drhdn.ghvis.domain.event.EventSourcedAggregate;
 import com.drhdn.ghvis.domain.event.repository.*;
 import lombok.Builder;
 import lombok.Data;

@@ -157,9 +157,8 @@ public class RepositoryAnalysisEventHandler {
         return Mono.empty();
     }
     
-    /**
-     * Construye string de componentes para logging.
-     */
+    // Métodos auxiliares para emojis
+    
     private String buildComponentsString(RepositoryAnalysisRequestedEvent event) {
         StringBuilder components = new StringBuilder();
         if (event.isIncludeCommits()) components.append("📝");
@@ -169,9 +168,6 @@ public class RepositoryAnalysisEventHandler {
         return components.toString();
     }
     
-    /**
-     * Obtiene emoji para estado.
-     */
     private String getStateEmoji(String state) {
         return switch (state) {
             case "open" -> "🟢";
@@ -181,9 +177,6 @@ public class RepositoryAnalysisEventHandler {
         };
     }
     
-    /**
-     * Obtiene emoji para ordenamiento.
-     */
     private String getSortEmoji(String sort) {
         return switch (sort) {
             case "created" -> "📅";
@@ -195,9 +188,6 @@ public class RepositoryAnalysisEventHandler {
         };
     }
     
-    /**
-     * Obtiene emoji para tipo de repositorio.
-     */
     private String getRepositoryTypeEmoji(String type) {
         return switch (type) {
             case "all" -> "📚";
@@ -208,9 +198,6 @@ public class RepositoryAnalysisEventHandler {
         };
     }
     
-    /**
-     * Obtiene emoji para tipo de error.
-     */
     private String getErrorTypeEmoji(String errorType) {
         return switch (errorType) {
             case "USER_NOT_FOUND" -> "👤";

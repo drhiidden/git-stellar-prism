@@ -50,7 +50,7 @@ public class AnalysisController {
         
         log.info("📊 Obteniendo análisis para: {}/{}", owner, repo);
         
-        return getRepositoryAnalysisQueryHandler.handleBasicAnalysis(owner, repo, principal)
+        return getRepositoryAnalysisQueryHandler.handleFullQuery(owner, repo, principal)
             .map(ResponseEntity::ok)
             .doOnSuccess(response -> log.info("✅ Análisis completado para: {}/{}", owner, repo))
             .doOnError(error -> log.error("❌ Error obteniendo análisis para {}/{}: {}", 
@@ -89,7 +89,7 @@ public class AnalysisController {
         log.info("📊 Obteniendo análisis personalizado para: {}/{} (L:{}, T:{}, S:{}, Sum:{})", 
             owner, repo, includeLanguages, includeTechnologies, includeStructure, includeSummary);
         
-        return getRepositoryAnalysisQueryHandler.handleCustomAnalysis(
+        return getRepositoryAnalysisQueryHandler.handleCustomQuery(
                 owner, repo, principal, 
                 includeLanguages, includeTechnologies, 
                 includeStructure, includeSummary)
@@ -126,7 +126,7 @@ public class AnalysisController {
         
         log.info("📊 Obteniendo análisis completo para: {}/{}", owner, repo);
         
-        return getRepositoryAnalysisQueryHandler.handleFullAnalysis(owner, repo, principal)
+        return getRepositoryAnalysisQueryHandler.handleFullQuery(owner, repo, principal)
             .map(ResponseEntity::ok)
             .doOnSuccess(response -> log.info("✅ Análisis completo finalizado para: {}/{}", owner, repo))
             .doOnError(error -> log.error("❌ Error obteniendo análisis completo para {}/{}: {}", 

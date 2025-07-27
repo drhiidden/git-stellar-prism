@@ -100,11 +100,22 @@ public class GithubApiAdapter {
      */
     public Mono<Repository> getRepository(String owner, String repo, Principal principal) {
         validateReadOnlyOperation("getRepository"); // 🔒 Salvaguarda de seguridad
+        String url = String.format("/repos/%s/%s", owner, repo);
+        log.info("🔍 GitHub API: GET {} (repository)", url);
+        
         return githubWebClient.get()
-                .uri("/repos/{owner}/{repo}", owner, repo)
+                .uri(uriBuilder -> uriBuilder
+                        .path(url)
+                        .build())
                 .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToMono(Map.class)
+                .map(map -> (Map<String, Object>) map)
+                .doOnSuccess(response -> log.info("✅ GitHub API: GET {} - Success (repository: {})", 
+                                        url, response.get("name")))
+                .doOnError(error -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, error.getMessage()))
+                .doOnSubscribe(s -> log.debug("🚀 GitHub API: Iniciando llamada GET {} (repository)", url))
                 .map(this::mapToRepository)
                 .doOnSuccess(repository -> log.debug("Repositorio obtenido: {}/{}", owner, repo))
                 .doOnError(e -> log.error("Error al obtener el repositorio {}/{}: {}", owner, repo, e.getMessage()));
@@ -118,11 +129,22 @@ public class GithubApiAdapter {
      * @return Mono con la información del repositorio
      */
     public Mono<Repository> getRepositoryPublic(String owner, String repo) {
+        String url = String.format("https://api.github.com/repos/%s/%s", owner, repo);
+        log.info("🔍 GitHub API: GET {} (public repository)", url);
+        
         return publicWebClient.get()
-                .uri("https://api.github.com/repos/{owner}/{repo}", owner, repo)
+                .uri(uriBuilder -> uriBuilder
+                        .path(url)
+                        .build())
                 .headers(this::setFallbackAuthHeader)
                 .retrieve()
                 .bodyToMono(Map.class)
+                .map(map -> (Map<String, Object>) map)
+                .doOnSuccess(response -> log.info("✅ GitHub API: GET {} - Success (public repository: {})", 
+                                        url, response.get("name")))
+                .doOnError(error -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, error.getMessage()))
+                .doOnSubscribe(s -> log.debug("🚀 GitHub API: Iniciando llamada GET {} (public repository)", url))
                 .map(this::mapToRepository)
                 .doOnSuccess(repository -> log.debug("Repositorio público obtenido: {}/{}", owner, repo))
                 .doOnError(e -> log.error("Error al obtener el repositorio público {}/{}: {}", owner, repo, e.getMessage()));
@@ -138,6 +160,8 @@ public class GithubApiAdapter {
      */
     public Flux<Commit> getCommits(String owner, String repo, Principal principal) {
         String endpoint = String.format("/repos/%s/%s/commits", owner, repo);
+        String url = String.format("/repos/%s/%s/commits?per_page=100", owner, repo);
+        log.info("🔍 GitHub API: GET {} (commits)", url);
         
         return rateLimitService.canMakeRequest(endpoint, principal)
             .flatMapMany(canMake -> {
@@ -147,9 +171,8 @@ public class GithubApiAdapter {
                 
                 return githubWebClient.get()
                     .uri(uriBuilder -> uriBuilder
-                            .path("/repos/{owner}/{repo}/commits")
-                            .queryParam("per_page", 100)
-                            .build(owner, repo))
+                            .path(url)
+                            .build())
                     .attributes(clientRegistrationId("github"))
                     .retrieve()
                     .toEntityFlux(Map.class)
@@ -164,7 +187,9 @@ public class GithubApiAdapter {
                     .retryWhen(rateLimitService.createRetryPolicy(endpoint, principal))
                     .doOnSubscribe(subscription -> 
                         log.debug("Obteniendo commits para repositorio: {}/{}", owner, repo))
-                    .doOnError(e -> log.error("Error al obtener los commits de {}/{}: {}", owner, repo, e.getMessage()));
+                    .doOnComplete(() -> log.info("✅ GitHub API: GET {} - Success (commits obtenidos)", url))
+                    .doOnError(e -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, e.getMessage()));
             });
     }
     
@@ -177,19 +202,22 @@ public class GithubApiAdapter {
      * @return Flux de pull requests
      */
     public Flux<PullRequest> getPullRequests(String owner, String repo, Principal principal) {
+        String url = String.format("/repos/%s/%s/pulls?state=all&per_page=100", owner, repo);
+        log.info("🔍 GitHub API: GET {} (pull requests)", url);
+        
         return githubWebClient.get()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/repos/{owner}/{repo}/pulls")
-                        .queryParam("state", "all")
-                        .queryParam("per_page", 100)
-                        .build(owner, repo))
+                        .path(url)
+                        .build())
                 .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToFlux(Map.class)
                 .map(this::mapToPullRequest)
                 .doOnSubscribe(subscription -> 
                     log.debug("Obteniendo pull requests para repositorio: {}/{}", owner, repo))
-                .doOnError(e -> log.error("Error al obtener los PRs de {}/{}: {}", owner, repo, e.getMessage()));
+                .doOnComplete(() -> log.info("✅ GitHub API: GET {} - Success (pull requests obtenidos)", url))
+                .doOnError(e -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, e.getMessage()));
     }
     
     /**
@@ -201,12 +229,13 @@ public class GithubApiAdapter {
      * @return Flux de issues
      */
     public Flux<Issue> getIssues(String owner, String repo, Principal principal) {
+        String url = String.format("/repos/%s/%s/issues?state=all&per_page=100", owner, repo);
+        log.info("🔍 GitHub API: GET {} (issues)", url);
+        
         return githubWebClient.get()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/repos/{owner}/{repo}/issues")
-                        .queryParam("state", "all")
-                        .queryParam("per_page", 100)
-                        .build(owner, repo))
+                        .path(url)
+                        .build())
                 .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToFlux(Map.class)
@@ -214,7 +243,9 @@ public class GithubApiAdapter {
                 .map(this::mapToIssue)
                 .doOnSubscribe(subscription -> 
                     log.debug("Obteniendo issues para repositorio: {}/{}", owner, repo))
-                .doOnError(e -> log.error("Error al obtener los issues de {}/{}: {}", owner, repo, e.getMessage()));
+                .doOnComplete(() -> log.info("✅ GitHub API: GET {} - Success (issues obtenidos)", url))
+                .doOnError(e -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, e.getMessage()));
     }
     
     /**
@@ -226,8 +257,13 @@ public class GithubApiAdapter {
      * @return Mono con mapa de lenguajes y bytes
      */
     public Mono<Map<String, Long>> getLanguages(String owner, String repo, Principal principal) {
+        String url = String.format("/repos/%s/%s/languages", owner, repo);
+        log.info("🔍 GitHub API: GET {} (languages)", url);
+        
         return githubWebClient.get()
-                .uri("/repos/{owner}/{repo}/languages", owner, repo)
+                .uri(uriBuilder -> uriBuilder
+                        .path(url)
+                        .build())
                 .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToMono(Map.class)
@@ -242,8 +278,12 @@ public class GithubApiAdapter {
                     });
                     return result;
                 })
-                .doOnSuccess(languages -> log.debug("Lenguajes obtenidos para {}/{}: {}", owner, repo, languages.keySet()))
-                .doOnError(e -> log.error("Error al obtener los lenguajes de {}/{}: {}", owner, repo, e.getMessage()))
+                .doOnSuccess(languages -> {
+                    log.debug("Lenguajes obtenidos para {}/{}: {}", owner, repo, languages.keySet());
+                    log.info("✅ GitHub API: GET {} - Success (languages obtenidos)", url);
+                })
+                .doOnError(e -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, e.getMessage()))
                 .onErrorResume(e -> Mono.just(Collections.emptyMap()));
     }
     
@@ -257,42 +297,60 @@ public class GithubApiAdapter {
      * @return Mono con el commit
      */
     public Mono<Commit> getCommitDetail(String owner, String repo, String sha, Principal principal) {
+        String url = String.format("/repos/%s/%s/commits/%s", owner, repo, sha);
+        log.info("🔍 GitHub API: GET {} (commit detail)", url);
+        
         return githubWebClient.get()
-                .uri("/repos/{owner}/{repo}/commits/{sha}", owner, repo, sha)
+                .uri(uriBuilder -> uriBuilder
+                        .path(url)
+                        .build())
                 .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(this::mapToDetailedCommit)
                 .doOnSuccess(commit -> log.debug("Detalles del commit {} obtenidos", sha))
-                .doOnError(e -> log.error("Error al obtener detalles del commit {}: {}", sha, e.getMessage()));
+                .doOnError(e -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, e.getMessage()));
     }
     
     /**
      * Obtiene detalles de un Pull Request específico.
      */
     public Mono<PullRequest> getPullRequestDetail(String owner, String repo, int number, Principal principal) {
+        String url = String.format("/repos/%s/%s/pulls/%d", owner, repo, number);
+        log.info("🔍 GitHub API: GET {} (pull request detail)", url);
+        
         return githubWebClient.get()
-                .uri("/repos/{owner}/{repo}/pulls/{number}", owner, repo, number)
+                .uri(uriBuilder -> uriBuilder
+                        .path(url)
+                        .build())
                 .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(this::mapToPullRequest)
                 .doOnSuccess(pr -> log.debug("Detalles del PR #{} obtenidos", number))
-                .doOnError(e -> log.error("Error al obtener PR #{} en {}/{}: {}", number, owner, repo, e.getMessage()));
+                .doOnError(e -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, e.getMessage()));
     }
 
     /**
      * Obtiene detalles de un Issue específico.
      */
     public Mono<Issue> getIssueDetail(String owner, String repo, int number, Principal principal) {
+        String url = String.format("/repos/%s/%s/issues/%d", owner, repo, number);
+        log.info("🔍 GitHub API: GET {} (issue detail)", url);
+        
         return githubWebClient.get()
-                .uri("/repos/{owner}/{repo}/issues/{number}", owner, repo, number)
+                .uri(uriBuilder -> uriBuilder
+                        .path(url)
+                        .build())
                 .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(this::mapToIssue)
                 .doOnSuccess(issue -> log.debug("Detalles del Issue #{} obtenidos", number))
-                .doOnError(e -> log.error("Error al obtener Issue #{} en {}/{}: {}", number, owner, repo, e.getMessage()));
+                .doOnError(e -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, e.getMessage()));
     }
     
     /**
@@ -305,17 +363,23 @@ public class GithubApiAdapter {
     @SuppressWarnings("unchecked")
     public Mono<Map<String, Object>> getCurrentUser(Principal principal) {
         validateReadOnlyOperation("getCurrentUser");
-        log.info("🔍 Obteniendo información del usuario actual");
+        String url = "/user";
+        log.info("🔍 GitHub API: GET {} (current user)", url);
         
         return githubWebClient
             .get()
-            .uri("/user")
+            .uri(uriBuilder -> uriBuilder
+                    .path(url)
+                    .build())
             .attributes(clientRegistrationId("github"))
             .retrieve()
             .bodyToMono(Map.class)
             .map(map -> (Map<String, Object>) map)
-            .doOnSuccess(user -> log.info("✅ Información del usuario actual obtenida"))
-            .doOnError(error -> log.error("❌ Error obteniendo información del usuario actual: {}", error.getMessage()));
+            .doOnSuccess(user -> log.info("✅ GitHub API: GET {} - Success (user: {})", 
+                                        url, user.get("login")))
+            .doOnError(error -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, error.getMessage()))
+            .doOnSubscribe(s -> log.debug("🚀 GitHub API: Iniciando llamada GET {} (current user)", url));
     }
     
     /**
@@ -329,17 +393,23 @@ public class GithubApiAdapter {
     @SuppressWarnings("unchecked")
     public Mono<Map<String, Object>> getUserByLogin(String login, Principal principal) {
         validateReadOnlyOperation("getUserByLogin");
-        log.info("🔍 Obteniendo información del usuario: {}", login);
+        String url = String.format("/users/%s", login);
+        log.info("🔍 GitHub API: GET {} (user by login)", url);
         
         return githubWebClient
             .get()
-            .uri("/users/{login}", login)
+            .uri(uriBuilder -> uriBuilder
+                    .path(url)
+                    .build())
             .attributes(clientRegistrationId("github"))
             .retrieve()
             .bodyToMono(Map.class)
             .map(map -> (Map<String, Object>) map)
-            .doOnSuccess(user -> log.info("✅ Información del usuario {} obtenida", login))
-            .doOnError(error -> log.error("❌ Error obteniendo información del usuario {}: {}", login, error.getMessage()));
+            .doOnSuccess(user -> log.info("✅ GitHub API: GET {} - Success (user: {})", 
+                                        url, user.get("login")))
+            .doOnError(error -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, error.getMessage()))
+            .doOnSubscribe(s -> log.debug("🚀 GitHub API: Iniciando llamada GET {} (user by login)", url));
     }
     
     /**
@@ -353,17 +423,23 @@ public class GithubApiAdapter {
     @SuppressWarnings("unchecked")
     public Mono<Map<String, Object>> getUserById(Long userId, Principal principal) {
         validateReadOnlyOperation("getUserById");
-        log.info("🔍 Obteniendo información del usuario por ID: {}", userId);
+        String url = String.format("/user/%d", userId);
+        log.info("🔍 GitHub API: GET {} (user by id)", url);
         
         return githubWebClient
             .get()
-            .uri("/user/{userId}", userId)
+            .uri(uriBuilder -> uriBuilder
+                    .path(url)
+                    .build())
             .attributes(clientRegistrationId("github"))
             .retrieve()
             .bodyToMono(Map.class)
             .map(map -> (Map<String, Object>) map)
-            .doOnSuccess(user -> log.info("✅ Información del usuario con ID {} obtenida", userId))
-            .doOnError(error -> log.error("❌ Error obteniendo información del usuario con ID {}: {}", userId, error.getMessage()));
+            .doOnSuccess(user -> log.info("✅ GitHub API: GET {} - Success (user: {})", 
+                                        url, user.get("login")))
+            .doOnError(error -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, error.getMessage()))
+            .doOnSubscribe(s -> log.debug("🚀 GitHub API: Iniciando llamada GET {} (user by id)", url));
     }
 
     /**
@@ -388,12 +464,12 @@ public class GithubApiAdapter {
      */
     public Flux<Repository> getUserRepositories(Principal principal) {
         validateReadOnlyOperation("getUserRepositories"); // 🔒 Salvaguarda de seguridad
+        String url = "/user/repos?visibility=all&sort=updated&per_page=100";
+        log.info("🔍 GitHub API: GET {} (user repositories)", url);
+        
         return githubWebClient.get()
                 .uri(uriBuilder -> uriBuilder
-                        .path("/user/repos")
-                        .queryParam("visibility", "all")
-                        .queryParam("sort", "updated")
-                        .queryParam("per_page", 100)
+                        .path(url)
                         .build())
                 .attributes(clientRegistrationId("github"))
                 .retrieve()
@@ -401,7 +477,9 @@ public class GithubApiAdapter {
                 .map(this::mapToRepository)
                 .doOnSubscribe(subscription -> 
                     log.debug("Obteniendo repositorios del usuario autenticado"))
-                .doOnError(e -> log.error("Error al obtener repositorios del usuario: {}", e.getMessage()));
+                .doOnComplete(() -> log.info("✅ GitHub API: GET {} - Success (user repositories obtenidos)", url))
+                .doOnError(e -> log.error("❌ GitHub API: GET {} - Error: {}", 
+                                    url, e.getMessage()));
     }
 
     /**
