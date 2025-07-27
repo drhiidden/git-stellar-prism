@@ -12,10 +12,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.security.Principal;
 import java.time.Instant;
 import java.util.List;
+import java.util.Collections;
 
 /**
  * Use case para obtener repositorios de un usuario.
@@ -42,7 +44,7 @@ public class GetUserRepositoriesUseCase {
     /**
      * Obtiene todos los repositorios de un usuario.
      * 
-     * @param username El nombre de usuario
+     * @param username El nombre de usuario (ignorado, se usa principal)
      * @param principal El principal del usuario autenticado
      * @return Flux con los repositorios del usuario
      */
@@ -63,7 +65,8 @@ public class GetUserRepositoriesUseCase {
         if (cacheEnabled) {
             return cacheService.getOrFetch(cacheKey, () -> {
                 log.info("🌐 Consultando repositorios frescos para usuario: {}", username);
-                return repositoryRepository.findByUser(username, principal);
+                return Mono.just(Collections.emptyList())
+                    .flatMap(ignored -> repositoryRepository.findByUser(principal).collectList());
             })
             .flatMapMany(Flux::fromIterable)
             .doOnComplete(() -> {
@@ -77,7 +80,7 @@ public class GetUserRepositoriesUseCase {
                 publishFailureEvent(requestId, username, principal, error, startTime, "all");
             });
         } else {
-            return repositoryRepository.findByUser(username, principal)
+            return repositoryRepository.findByUser(principal)
                 .doOnComplete(() -> {
                     log.info("✅ Repositorios obtenidos exitosamente para usuario: {} (RequestId: {})", 
                         username, requestId);
@@ -115,7 +118,10 @@ public class GetUserRepositoriesUseCase {
         if (cacheEnabled) {
             return cacheService.getOrFetch(cacheKey, () -> {
                 log.info("🌐 Consultando repositorios públicos frescos para usuario: {}", username);
-                return repositoryRepository.findPublicByUser(username, principal);
+                // Filtrar solo repositorios públicos
+                return repositoryRepository.findByUser(principal)
+                    .filter(repo -> !repo.isPrivate())
+                    .collectList();
             })
             .flatMapMany(Flux::fromIterable)
             .doOnComplete(() -> {
@@ -129,7 +135,8 @@ public class GetUserRepositoriesUseCase {
                 publishFailureEvent(requestId, username, principal, error, startTime, "public");
             });
         } else {
-            return repositoryRepository.findPublicByUser(username, principal)
+            return repositoryRepository.findByUser(principal)
+                .filter(repo -> !repo.isPrivate())
                 .doOnComplete(() -> {
                     log.info("✅ Repositorios públicos obtenidos exitosamente para usuario: {} (RequestId: {})", 
                         username, requestId);
@@ -167,7 +174,8 @@ public class GetUserRepositoriesUseCase {
         if (cacheEnabled) {
             return cacheService.getOrFetch(cacheKey, () -> {
                 log.info("🌐 Consultando repositorios detallados frescos para usuario: {}", username);
-                return repositoryRepository.findWithDetailsByUser(username, principal);
+                // TODO: Implementar enriquecimiento de repositorios con detalles
+                return repositoryRepository.findByUser(principal).collectList();
             })
             .flatMapMany(Flux::fromIterable)
             .doOnComplete(() -> {
@@ -181,7 +189,7 @@ public class GetUserRepositoriesUseCase {
                 publishFailureEvent(requestId, username, principal, error, startTime, "detailed");
             });
         } else {
-            return repositoryRepository.findWithDetailsByUser(username, principal)
+            return repositoryRepository.findByUser(principal)
                 .doOnComplete(() -> {
                     log.info("✅ Repositorios detallados obtenidos exitosamente para usuario: {} (RequestId: {})", 
                         username, requestId);

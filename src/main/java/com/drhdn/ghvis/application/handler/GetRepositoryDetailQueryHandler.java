@@ -31,14 +31,15 @@ public class GetRepositoryDetailQueryHandler {
      * @param query La query a procesar
      * @return Mono con el resultado según el tipo de detalle
      */
-    public Mono<Object> handle(GetRepositoryDetailQuery query) {
+    @SuppressWarnings("unchecked")
+    public <T> Mono<T> handle(GetRepositoryDetailQuery query) {
         log.info("🔍 Ejecutando query de detalles para repositorio: {} (QueryId: {})",
             query.getRepositoryFullName(), query.getQueryId());
         
         return switch (query.getDetailType()) {
-            case PULL_REQUEST -> handlePullRequestQuery(query);
-            case ISSUE -> handleIssueQuery(query);
-            case COMMIT -> handleCommitQuery(query);
+            case PULL_REQUEST -> (Mono<T>) handlePullRequestQuery(query);
+            case ISSUE -> (Mono<T>) handleIssueQuery(query);
+            case COMMIT -> (Mono<T>) handleCommitQuery(query);
         };
     }
     

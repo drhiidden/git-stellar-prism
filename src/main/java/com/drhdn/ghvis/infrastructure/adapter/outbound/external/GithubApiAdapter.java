@@ -302,6 +302,7 @@ public class GithubApiAdapter {
      * @param principal Principal del usuario autenticado
      * @return Mono con la información del usuario actual
      */
+    @SuppressWarnings("unchecked")
     public Mono<Map<String, Object>> getCurrentUser(Principal principal) {
         validateReadOnlyOperation("getCurrentUser");
         log.info("🔍 Obteniendo información del usuario actual");
@@ -312,6 +313,7 @@ public class GithubApiAdapter {
             .attributes(clientRegistrationId("github"))
             .retrieve()
             .bodyToMono(Map.class)
+            .map(map -> (Map<String, Object>) map)
             .doOnSuccess(user -> log.info("✅ Información del usuario actual obtenida"))
             .doOnError(error -> log.error("❌ Error obteniendo información del usuario actual: {}", error.getMessage()));
     }
@@ -324,6 +326,7 @@ public class GithubApiAdapter {
      * @param principal Principal del usuario autenticado (para rate limiting)
      * @return Mono con la información del usuario
      */
+    @SuppressWarnings("unchecked")
     public Mono<Map<String, Object>> getUserByLogin(String login, Principal principal) {
         validateReadOnlyOperation("getUserByLogin");
         log.info("🔍 Obteniendo información del usuario: {}", login);
@@ -334,6 +337,7 @@ public class GithubApiAdapter {
             .attributes(clientRegistrationId("github"))
             .retrieve()
             .bodyToMono(Map.class)
+            .map(map -> (Map<String, Object>) map)
             .doOnSuccess(user -> log.info("✅ Información del usuario {} obtenida", login))
             .doOnError(error -> log.error("❌ Error obteniendo información del usuario {}: {}", login, error.getMessage()));
     }
@@ -346,6 +350,7 @@ public class GithubApiAdapter {
      * @param principal Principal del usuario autenticado (para rate limiting)
      * @return Mono con la información del usuario
      */
+    @SuppressWarnings("unchecked")
     public Mono<Map<String, Object>> getUserById(Long userId, Principal principal) {
         validateReadOnlyOperation("getUserById");
         log.info("🔍 Obteniendo información del usuario por ID: {}", userId);
@@ -356,6 +361,7 @@ public class GithubApiAdapter {
             .attributes(clientRegistrationId("github"))
             .retrieve()
             .bodyToMono(Map.class)
+            .map(map -> (Map<String, Object>) map)
             .doOnSuccess(user -> log.info("✅ Información del usuario con ID {} obtenida", userId))
             .doOnError(error -> log.error("❌ Error obteniendo información del usuario con ID {}: {}", userId, error.getMessage()));
     }

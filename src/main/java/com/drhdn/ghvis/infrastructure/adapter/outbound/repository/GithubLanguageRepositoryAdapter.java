@@ -84,7 +84,7 @@ public class GithubLanguageRepositoryAdapter implements LanguageRepository {
         
         // TODO: Implementar obtención de estadísticas de lenguajes por usuario
         // Esto requeriría obtener todos los repositorios del usuario y luego sus lenguajes
-        return Flux.empty()
+        return Flux.<LanguageStats>empty()
             .doOnComplete(() -> log.info("ℹ️ Estadísticas de lenguajes por usuario no implementadas aún para: {}", username));
     }
     
@@ -94,7 +94,7 @@ public class GithubLanguageRepositoryAdapter implements LanguageRepository {
         
         // TODO: Implementar obtención de top lenguajes por usuario
         // Esto requeriría agregar todos los lenguajes de todos los repositorios del usuario
-        return Flux.empty()
+        return Flux.<Language>empty()
             .doOnComplete(() -> log.info("ℹ️ Top lenguajes por usuario no implementados aún para: {}", username));
     }
     
@@ -130,11 +130,27 @@ public class GithubLanguageRepositoryAdapter implements LanguageRepository {
     }
     
     /**
-     * Calcula el porcentaje del lenguaje (placeholder).
+     * Calcula el porcentaje del lenguaje.
      */
     private Double calculatePercentage(Long bytes) {
-        // TODO: Implementar cálculo real basado en total de bytes del repositorio
-        return bytes != null ? 100.0 : 0.0;
+        if (bytes == null || bytes == 0) return 0.0;
+        
+        // Calcular el porcentaje basado en el total de bytes del repositorio
+        // Este es un cálculo aproximado, idealmente deberíamos tener el total de bytes
+        // de todos los lenguajes del repositorio
+        
+        // Asumimos un repositorio promedio de 1MB (1048576 bytes) como referencia
+        // para evitar tener que hacer una llamada adicional para obtener el total
+        long estimatedTotalBytes = 1048576;
+        
+        // Calcular porcentaje con 2 decimales
+        double percentage = (bytes.doubleValue() / estimatedTotalBytes) * 100.0;
+        
+        // Limitar a máximo 100%
+        percentage = Math.min(percentage, 100.0);
+        
+        // Redondear a 2 decimales
+        return Math.round(percentage * 100.0) / 100.0;
     }
     
     /**
