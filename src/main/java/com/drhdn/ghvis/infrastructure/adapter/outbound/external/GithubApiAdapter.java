@@ -74,7 +74,7 @@ public class GithubApiAdapter {
             "getPullRequests", "getIssues", "getLanguages",
             "getCommitDetail", "getPullRequestDetail", "getIssueDetail",
             "getUserRepositories", "hasRepositoryAccess", "getCurrentUser",
-            "getUserByLogin", "getUserById"
+            "getUserByLogin", "getUserById", "getRepositoryTree"
         );
         
         if (!allowedOperations.contains(operation)) {
@@ -442,6 +442,29 @@ public class GithubApiAdapter {
             .doOnSubscribe(s -> log.debug("🚀 GitHub API: Iniciando llamada GET {} (user by id)", url));
     }
 
+    /**
+     * Obtiene el árbol de archivos completo de un repositorio de forma recursiva (branch por defecto = main).
+     * Solo lectura ✓
+     */
+    public Mono<List<Map<String, Object>>> getRepositoryTree(String owner, String repo, String branch, Principal principal) {
+        validateReadOnlyOperation("getRepositoryTree");
+        String branchRef = branch != null && !branch.isBlank() ? branch : "HEAD";
+        String url = String.format("/repos/%s/%s/git/trees/%s?recursive=1", owner, repo, branchRef);
+        log.info("🔍 GitHub API: GET {} (repo tree)", url);
+
+        return githubWebClient.get()
+                .uri(uriBuilder -> uriBuilder
+                        .path(url)
+                        .build())
+                .attributes(clientRegistrationId("github"))
+                .retrieve()
+                .bodyToMono(Map.class)
+                .map(map -> (Map<String, Object>) map)
+                .map(resp -> (List<Map<String, Object>>) resp.getOrDefault("tree", Collections.emptyList()))
+                .doOnSuccess(list -> log.info("✅ GitHub API: GET {} - Success ({} nodes)", url, list.size()))
+                .doOnError(error -> log.error("❌ GitHub API: GET {} - Error: {}", url, error.getMessage()));
+    }
+    
     /**
      * Establece el header de autorización con el token de fallback.
      * Solo se usa para APIs públicas cuando no hay OAuth2 disponible.
