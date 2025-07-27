@@ -118,6 +118,46 @@ public class RepositoryAnalysisEventHandler {
     }
     
     /**
+     * Maneja eventos de solicitud de repositorios de usuario.
+     */
+    public Mono<Void> handleUserRepositoriesRequested(UserRepositoriesRequestedEvent event) {
+        String type = getRepositoryTypeEmoji(event.getRequestType());
+        String details = event.isIncludeDetails() ? "🔍" : "📋";
+        
+        log.info("{} Solicitud de repositorios de usuario - Usuario: {}, Tipo: {}, Detalles: {}, RequestId: {}", 
+            type, event.getUsername(), event.getRequestType(), details, event.getRequestId());
+        
+        return Mono.empty();
+    }
+    
+    /**
+     * Maneja eventos de obtención exitosa de repositorios de usuario.
+     */
+    public Mono<Void> handleUserRepositoriesRetrieved(UserRepositoriesRetrievedEvent event) {
+        String status = event.isSuccessful() ? "✅" : "⚠️";
+        String type = getRepositoryTypeEmoji(event.getRequestType());
+        String duration = event.getFormattedDuration();
+        
+        log.info("{} Repositorios de usuario obtenidos - Usuario: {}, Tipo: {}, Duration: {}, RequestId: {}", 
+            status, event.getUsername(), type, duration, event.getRequestId());
+        
+        return Mono.empty();
+    }
+    
+    /**
+     * Maneja eventos de fallo en obtención de repositorios de usuario.
+     */
+    public Mono<Void> handleUserRepositoriesRetrievalFailed(UserRepositoriesRetrievalFailedEvent event) {
+        String errorType = getErrorTypeEmoji(event.getErrorType());
+        String duration = event.getFormattedDuration();
+        
+        log.error("{} Error obteniendo repositorios de usuario - Usuario: {}, Tipo: {}, Error: {}, Duration: {}, RequestId: {}", 
+            errorType, event.getUsername(), event.getRequestType(), event.getErrorMessage(), duration, event.getRequestId());
+        
+        return Mono.empty();
+    }
+    
+    /**
      * Construye string de componentes para logging.
      */
     private String buildComponentsString(RepositoryAnalysisRequestedEvent event) {
@@ -152,6 +192,33 @@ public class RepositoryAnalysisEventHandler {
             case "popularity" -> "⭐";
             case "long-running" -> "⏰";
             default -> "📊";
+        };
+    }
+    
+    /**
+     * Obtiene emoji para tipo de repositorio.
+     */
+    private String getRepositoryTypeEmoji(String type) {
+        return switch (type) {
+            case "all" -> "📚";
+            case "public" -> "🌐";
+            case "private" -> "🔒";
+            case "detailed" -> "🔍";
+            default -> "📁";
+        };
+    }
+    
+    /**
+     * Obtiene emoji para tipo de error.
+     */
+    private String getErrorTypeEmoji(String errorType) {
+        return switch (errorType) {
+            case "USER_NOT_FOUND" -> "👤";
+            case "RATE_LIMIT_EXCEEDED" -> "⏰";
+            case "UNAUTHORIZED" -> "🔐";
+            case "TIMEOUT" -> "⏱️";
+            case "NETWORK_ERROR" -> "🌐";
+            default -> "❌";
         };
     }
 } 

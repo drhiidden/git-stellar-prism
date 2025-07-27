@@ -57,6 +57,12 @@ public class EventPublisherAdapter implements EventPublisher {
                 return repositoryAnalysisEventHandler.handlePullRequestRetrievalRequested(prRequestedEvent);
             } else if (event instanceof TechnicalSummaryGeneratedEvent technicalSummaryEvent) {
                 return repositoryAnalysisEventHandler.handleTechnicalSummaryGenerated(technicalSummaryEvent);
+            } else if (event instanceof UserRepositoriesRequestedEvent userReposRequestedEvent) {
+                return repositoryAnalysisEventHandler.handleUserRepositoriesRequested(userReposRequestedEvent);
+            } else if (event instanceof UserRepositoriesRetrievedEvent userReposRetrievedEvent) {
+                return repositoryAnalysisEventHandler.handleUserRepositoriesRetrieved(userReposRetrievedEvent);
+            } else if (event instanceof UserRepositoriesRetrievalFailedEvent userReposFailedEvent) {
+                return repositoryAnalysisEventHandler.handleUserRepositoriesRetrievalFailed(userReposFailedEvent);
             } else {
                 log.warn("⚠️ Evento no manejado: {}", event.getClass().getSimpleName());
                 return Mono.empty();

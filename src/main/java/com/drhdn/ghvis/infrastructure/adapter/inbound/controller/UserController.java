@@ -1,11 +1,14 @@
 package com.drhdn.ghvis.infrastructure.adapter.inbound.controller;
 
-import com.drhdn.ghvis.infrastructure.adapter.outbound.external.GithubApiAdapter;
-import com.drhdn.ghvis.infrastructure.adapter.inbound.security.OAuth2UserService;
-import com.drhdn.ghvis.domain.port.CacheService;
+import com.drhdn.ghvis.application.handler.GetUserRepositoriesQueryHandler;
+import com.drhdn.ghvis.application.query.GetUserInfoQuery;
+import com.drhdn.ghvis.application.handler.GetUserInfoQueryHandler;
+import com.drhdn.ghvis.domain.entity.Repository;
+import com.drhdn.ghvis.domain.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +22,10 @@ import java.util.Map;
 
 /**
  * Controlador para información del usuario autenticado.
+ * Implementa CQRS usando queries y handlers.
+ * 
+ * @author GitStellarPrism Team
+ * @version 1.0.0
  */
 @RestController
 @RequiredArgsConstructor
@@ -26,45 +33,58 @@ import java.util.Map;
 @RequestMapping("/api/user")
 public class UserController {
 
-    private final OAuth2UserService oAuth2UserService;
-    private final GithubApiAdapter githubApiAdapter;
-    private final CacheService cacheService;
+    private final GetUserInfoQueryHandler getUserInfoQueryHandler;
+    private final GetUserRepositoriesQueryHandler getUserRepositoriesQueryHandler;
 
     /**
      * Obtiene la información básica del usuario autenticado.
      */
     @GetMapping(value = "/info", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Map<String, Object>> getUserInfo(Authentication authentication) {
+    public Mono<ResponseEntity<Map<String, Object>>> getUserInfo(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof OAuth2User)) {
-            return Mono.just(Map.of("error", "Usuario no autenticado"));
+            return Mono.just(ResponseEntity.ok(Map.of("error", "Usuario no autenticado")));
         }
         
         OAuth2User oauth2User = (OAuth2User) authentication.getPrincipal();
-        Map<String, Object> userInfo = new HashMap<>();
+        String username = oauth2User.getAttribute("login");
         
-        // Información básica del usuario
-        userInfo.put("id", oauth2User.getAttribute("id"));
-        userInfo.put("login", oauth2User.getAttribute("login"));
-        userInfo.put("name", oauth2User.getAttribute("name"));
-        userInfo.put("email", oauth2User.getAttribute("email"));
-        userInfo.put("avatar_url", oauth2User.getAttribute("avatar_url"));
-        userInfo.put("bio", oauth2User.getAttribute("bio"));
-        userInfo.put("location", oauth2User.getAttribute("location"));
-        userInfo.put("public_repos", oauth2User.getAttribute("public_repos"));
-        userInfo.put("total_private_repos", oauth2User.getAttribute("total_private_repos"));
-        userInfo.put("followers", oauth2User.getAttribute("followers"));
-        userInfo.put("following", oauth2User.getAttribute("following"));
+        log.info("🔍 Obteniendo información del usuario: {}", username);
         
-        return Mono.just(userInfo)
-            .doOnNext(info -> log.debug("Información de usuario obtenida: {}", 
-                (String) oauth2User.getAttribute("login")));
+        GetUserInfoQuery query = GetUserInfoQuery.create(username, authentication);
+        
+        return getUserInfoQueryHandler.handle(query)
+            .map(user -> {
+                Map<String, Object> userInfo = new HashMap<>();
+                userInfo.put("id", user.getId());
+                userInfo.put("login", user.getLogin());
+                userInfo.put("name", user.getName());
+                userInfo.put("email", user.getEmail());
+                userInfo.put("avatar_url", user.getAvatarUrl());
+                userInfo.put("bio", user.getBio());
+                userInfo.put("location", user.getLocation());
+                userInfo.put("public_repos", user.getPublicRepos());
+                userInfo.put("total_private_repos", user.getTotalPrivateRepos());
+                userInfo.put("followers", user.getFollowers());
+                userInfo.put("following", user.getFollowing());
+                userInfo.put("html_url", user.getHtmlUrl());
+                userInfo.put("type", user.getType());
+                userInfo.put("verified", user.getVerified());
+                userInfo.put("bot", user.getBot());
+                userInfo.put("site_admin", user.getSiteAdmin());
+                
+                return ResponseEntity.ok(userInfo);
+            })
+            .doOnSuccess(response -> log.info("✅ Información del usuario obtenida exitosamente: {}", username))
+            .doOnError(error -> log.error("❌ Error obteniendo información del usuario {}: {}", username, error.getMessage()))
+            .onErrorResume(error -> Mono.just(ResponseEntity.internalServerError()
+                .body(Map.of("error", "Error obteniendo información del usuario", "message", error.getMessage()))));
     }
 
     /**
      * Verifica el estado de autenticación del usuario.
      */
     @GetMapping(value = "/auth-status", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Map<String, Object>> getAuthStatus(Principal principal, Authentication authentication) {
+    public Mono<ResponseEntity<Map<String, Object>>> getAuthStatus(Principal principal, Authentication authentication) {
         Map<String, Object> status = new HashMap<>();
         
         if (principal != null && authentication != null) {
@@ -82,60 +102,74 @@ public class UserController {
             status.put("oauth2", false);
         }
         
-        return Mono.just(status);
+        return Mono.just(ResponseEntity.ok(status))
+            .doOnSuccess(response -> log.debug("🔍 Estado de autenticación verificado"))
+            .doOnError(error -> log.error("❌ Error verificando estado de autenticación: {}", error.getMessage()));
     }
 
     /**
      * Obtiene los repositorios del usuario autenticado (con caché).
      */
     @GetMapping(value = "/repositories", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Object> getUserRepositories(Principal principal) {
+    public Mono<ResponseEntity<Object>> getUserRepositories(Principal principal) {
         if (principal == null) {
-            return Mono.just(Map.of("error", "Usuario no autenticado"));
+            return Mono.just(ResponseEntity.ok(Map.of("error", "Usuario no autenticado")));
         }
         
-        return githubApiAdapter.getUserRepositories(principal)
+        String username = principal.getName();
+        log.info("🔍 Obteniendo repositorios del usuario: {}", username);
+        
+        return getUserRepositoriesQueryHandler.handleAllQuery(username, principal)
             .collectList()
-            .cast(Object.class)
-            .doOnNext(repos -> log.debug("Obtenidos repositorios para el usuario (con caché)"))
-            .doOnError(error -> log.error("Error obteniendo repositorios del usuario: {}", error.getMessage()))
-            .onErrorReturn(Map.of("error", "Error obteniendo repositorios"));
+            .map(repositories -> ResponseEntity.ok((Object) repositories))
+            .doOnSuccess(response -> log.info("✅ Repositorios obtenidos exitosamente para usuario: {}", username))
+            .doOnError(error -> log.error("❌ Error obteniendo repositorios del usuario {}: {}", username, error.getMessage()))
+            .onErrorResume(error -> Mono.just(ResponseEntity.internalServerError()
+                .body(Map.of("error", "Error obteniendo repositorios", "message", error.getMessage()))));
     }
 
     /**
      * Obtiene los repositorios del usuario con información detallada de tecnologías (con caché).
      */
     @GetMapping(value = "/repositories/detailed", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Object> getUserRepositoriesDetailed(Principal principal) {
+    public Mono<ResponseEntity<Object>> getUserRepositoriesDetailed(Principal principal) {
         if (principal == null) {
-            return Mono.just(Map.of("error", "Usuario no autenticado"));
+            return Mono.just(ResponseEntity.ok(Map.of("error", "Usuario no autenticado")));
         }
         
-        return githubApiAdapter.getUserRepositoriesWithDetails(principal)
+        String username = principal.getName();
+        log.info("🔍 Obteniendo repositorios detallados del usuario: {}", username);
+        
+        return getUserRepositoriesQueryHandler.handleDetailedQuery(username, principal)
             .collectList()
-            .cast(Object.class)
-            .doOnNext(repos -> log.debug("Obtenidos repositorios detallados para el usuario (con caché)"))
-            .doOnError(error -> log.error("Error obteniendo repositorios detallados: {}", error.getMessage()))
-            .onErrorReturn(Map.of("error", "Error obteniendo repositorios detallados"));
+            .map(repositories -> ResponseEntity.ok((Object) repositories))
+            .doOnSuccess(response -> log.info("✅ Repositorios detallados obtenidos exitosamente para usuario: {}", username))
+            .doOnError(error -> log.error("❌ Error obteniendo repositorios detallados del usuario {}: {}", username, error.getMessage()))
+            .onErrorResume(error -> Mono.just(ResponseEntity.internalServerError()
+                .body(Map.of("error", "Error obteniendo repositorios detallados", "message", error.getMessage()))));
     }
 
     /**
      * Obtiene repositorios sin caché - para forzar actualización.
      */
     @GetMapping(value = "/repositories/refresh", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Object> refreshUserRepositories(Principal principal) {
+    public Mono<ResponseEntity<Object>> refreshUserRepositories(Principal principal) {
         if (principal == null) {
-            return Mono.just(Map.of("error", "Usuario no autenticado"));
+            return Mono.just(ResponseEntity.ok(Map.of("error", "Usuario no autenticado")));
         }
         
-        // Limpiar caché del usuario primero
-        cacheService.clear("user:" + principal.getName());
+        String username = principal.getName();
+        log.info("🔄 Refrescando repositorios del usuario: {}", username);
         
-        return githubApiAdapter.getUserRepositoriesWithDetails(principal)
+        // Limpiar cache del usuario primero
+        getUserRepositoriesQueryHandler.clearCache(username);
+        
+        return getUserRepositoriesQueryHandler.handleDetailedQuery(username, principal)
             .collectList()
-            .cast(Object.class)
-            .doOnNext(repos -> log.debug("Repositorios refrescados para el usuario"))
-            .doOnError(error -> log.error("Error refrescando repositorios: {}", error.getMessage()))
-            .onErrorReturn(Map.of("error", "Error refrescando repositorios"));
+            .map(repositories -> ResponseEntity.ok((Object) repositories))
+            .doOnSuccess(response -> log.info("✅ Repositorios refrescados exitosamente para usuario: {}", username))
+            .doOnError(error -> log.error("❌ Error refrescando repositorios del usuario {}: {}", username, error.getMessage()))
+            .onErrorResume(error -> Mono.just(ResponseEntity.internalServerError()
+                .body(Map.of("error", "Error refrescando repositorios", "message", error.getMessage()))));
     }
 } 

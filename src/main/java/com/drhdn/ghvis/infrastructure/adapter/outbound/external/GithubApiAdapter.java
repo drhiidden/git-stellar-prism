@@ -73,7 +73,8 @@ public class GithubApiAdapter {
             "getRepository", "getRepositoryPublic", "getCommits", 
             "getPullRequests", "getIssues", "getLanguages",
             "getCommitDetail", "getPullRequestDetail", "getIssueDetail",
-            "getUserRepositories", "hasRepositoryAccess"
+            "getUserRepositories", "hasRepositoryAccess", "getCurrentUser",
+            "getUserByLogin", "getUserById"
         );
         
         if (!allowedOperations.contains(operation)) {
@@ -294,6 +295,71 @@ public class GithubApiAdapter {
                 .doOnError(e -> log.error("Error al obtener Issue #{} en {}/{}: {}", number, owner, repo, e.getMessage()));
     }
     
+    /**
+     * Obtiene información del usuario autenticado actual.
+     * 🔒 OPERACIÓN SEGURA: Solo lectura
+     * 
+     * @param principal Principal del usuario autenticado
+     * @return Mono con la información del usuario actual
+     */
+    public Mono<Map<String, Object>> getCurrentUser(Principal principal) {
+        validateReadOnlyOperation("getCurrentUser");
+        log.info("🔍 Obteniendo información del usuario actual");
+        
+        return githubWebClient
+            .get()
+            .uri("/user")
+            .attributes(clientRegistrationId("github"))
+            .retrieve()
+            .bodyToMono(Map.class)
+            .doOnSuccess(user -> log.info("✅ Información del usuario actual obtenida"))
+            .doOnError(error -> log.error("❌ Error obteniendo información del usuario actual: {}", error.getMessage()));
+    }
+    
+    /**
+     * Obtiene información de un usuario específico por su login.
+     * 🔒 OPERACIÓN SEGURA: Solo lectura
+     * 
+     * @param login Login del usuario
+     * @param principal Principal del usuario autenticado (para rate limiting)
+     * @return Mono con la información del usuario
+     */
+    public Mono<Map<String, Object>> getUserByLogin(String login, Principal principal) {
+        validateReadOnlyOperation("getUserByLogin");
+        log.info("🔍 Obteniendo información del usuario: {}", login);
+        
+        return githubWebClient
+            .get()
+            .uri("/users/{login}", login)
+            .attributes(clientRegistrationId("github"))
+            .retrieve()
+            .bodyToMono(Map.class)
+            .doOnSuccess(user -> log.info("✅ Información del usuario {} obtenida", login))
+            .doOnError(error -> log.error("❌ Error obteniendo información del usuario {}: {}", login, error.getMessage()));
+    }
+    
+    /**
+     * Obtiene información de un usuario específico por su ID.
+     * 🔒 OPERACIÓN SEGURA: Solo lectura
+     * 
+     * @param userId ID del usuario
+     * @param principal Principal del usuario autenticado (para rate limiting)
+     * @return Mono con la información del usuario
+     */
+    public Mono<Map<String, Object>> getUserById(Long userId, Principal principal) {
+        validateReadOnlyOperation("getUserById");
+        log.info("🔍 Obteniendo información del usuario por ID: {}", userId);
+        
+        return githubWebClient
+            .get()
+            .uri("/user/{userId}", userId)
+            .attributes(clientRegistrationId("github"))
+            .retrieve()
+            .bodyToMono(Map.class)
+            .doOnSuccess(user -> log.info("✅ Información del usuario con ID {} obtenida", userId))
+            .doOnError(error -> log.error("❌ Error obteniendo información del usuario con ID {}: {}", userId, error.getMessage()));
+    }
+
     /**
      * Establece el header de autorización con el token de fallback.
      * Solo se usa para APIs públicas cuando no hay OAuth2 disponible.
