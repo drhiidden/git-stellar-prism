@@ -14,6 +14,8 @@ import reactor.core.publisher.Sinks;
 import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAdder;
 
 /**
  * Controlador para emitir eventos en tiempo real mediante Server-Sent Events (SSE).
@@ -36,6 +38,10 @@ public class StreamController {
     // Sink para eventos en tiempo real
     private final Sinks.Many<Map<String, Object>> eventSink = Sinks.many().multicast().onBackpressureBuffer();
 
+    // Contadores de métricas
+    private final AtomicInteger activeConnections = new AtomicInteger(0);
+    private final LongAdder eventsSent = new LongAdder();
+
     /**
      * Endpoint SSE que envía eventos en tiempo real para un repositorio específico.
      * Incluye eventos de conexión inicial y heartbeats informativos.
@@ -43,6 +49,7 @@ public class StreamController {
     @GetMapping(value = "/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<Map<String, Object>>> streamEvents(@RequestParam("repo") String repoParam) {
         log.info("🔗 Nueva conexión SSE para repositorio: {}", repoParam);
+        activeConnections.incrementAndGet();
         
         // Evento de conexión inicial
         Map<String, Object> connectionEvent = Map.of(
@@ -110,7 +117,9 @@ public class StreamController {
             });
 
         return Flux.merge(initialEvent, eventFlux, heartbeat, testEvent)
+            .doOnNext(e -> eventsSent.increment())
             .doOnCancel(() -> log.info("🔌 Conexión SSE cancelada para: {}", repoParam))
+            .doFinally(signal -> activeConnections.decrementAndGet())
             .doOnError(error -> log.error("❌ Error en SSE para {}: {}", repoParam, error.getMessage()));
     }
     
@@ -148,8 +157,8 @@ public class StreamController {
     @GetMapping("/stats")
     public Flux<Map<String, Object>> getStreamStats() {
         Map<String, Object> stats = Map.of(
-            "active_connections", "N/A", // TODO: Implementar contador
-            "events_sent", "N/A", // TODO: Implementar contador
+            "active_connections", activeConnections.get(),
+            "events_sent", eventsSent.longValue(),
             "timestamp", java.time.Instant.now().toString(),
             "status", "ACTIVE"
         );

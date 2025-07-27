@@ -51,6 +51,37 @@ public class Technology {
      */
     private String description;
     
+    // --------- Nuevos campos para detección avanzada ---------
+    /**
+     * Categoría de la tecnología (Framework, Build Tool, etc.)
+     */
+    private String category;
+
+    /**
+     * Lenguaje principal asociado a la tecnología
+     */
+    private String language;
+
+    /**
+     * Nivel de confianza de la detección (0.0 - 1.0)
+     */
+    private Double confidence;
+
+    /**
+     * Propietario del repositorio donde se detectó la tecnología
+     */
+    private String repositoryOwner;
+
+    /**
+     * Nombre del repositorio donde se detectó la tecnología
+     */
+    private String repositoryName;
+
+    /**
+     * Fecha de detección
+     */
+    private java.time.Instant detectedAt;
+    
     /**
      * Tipos de tecnología
      */

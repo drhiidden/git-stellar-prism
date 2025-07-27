@@ -1,12 +1,12 @@
 package com.drhdn.ghvis.infrastructure.adapter.inbound.controller;
 
-import com.drhdn.ghvis.application.usecase.GetRepositoryCommitsUseCase;
-import com.drhdn.ghvis.application.usecase.GetCommitDetailUseCase;
+import com.drhdn.ghvis.application.query.GetRepositoryCommitsQuery;
+import com.drhdn.ghvis.application.handler.GetRepositoryCommitsQueryHandler;
+import com.drhdn.ghvis.application.query.GetRepositoryDetailQuery;
+import com.drhdn.ghvis.application.handler.GetRepositoryDetailQueryHandler;
 import com.drhdn.ghvis.domain.entity.Commit;
 import com.drhdn.ghvis.domain.entity.PullRequest;
 import com.drhdn.ghvis.domain.entity.Issue;
-import com.drhdn.ghvis.application.query.GetRepositoryDetailQuery;
-import com.drhdn.ghvis.application.handler.GetRepositoryDetailQueryHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -16,12 +16,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 import java.security.Principal;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Controlador REST para datos de repositorio (commits, detalles, etc.).
@@ -36,8 +34,7 @@ import java.util.Map;
 @RequestMapping("/api/repository")
 public class RepositoryController {
 
-    private final GetRepositoryCommitsUseCase getRepositoryCommitsUseCase;
-    private final GetCommitDetailUseCase getCommitDetailUseCase;
+    private final GetRepositoryCommitsQueryHandler getRepositoryCommitsQueryHandler;
     private final GetRepositoryDetailQueryHandler getRepositoryDetailQueryHandler;
 
     /**
@@ -56,16 +53,16 @@ public class RepositoryController {
         String owner = parts[0];
         String repo = parts[1];
         
-        log.info("📊 Obteniendo commits para: {}/{}", owner, repo);
-        
-        // Usar use case que internamente maneja cache, rate limiting y OAuth2
-        return getRepositoryCommitsUseCase.execute(owner, repo, principal)
-            .collectList()
+        log.info("📊 Ejecutando query de commits para: {}/{}", owner, repo);
+
+        GetRepositoryCommitsQuery query = GetRepositoryCommitsQuery.create(owner, repo, principal);
+
+        return getRepositoryCommitsQueryHandler.handle(query)
             .map(ResponseEntity::ok)
-            .doOnSuccess(response -> log.info("✅ Commits obtenidos: {} commits para {}/{}", 
-                response.getBody().size(), owner, repo))
-            .doOnError(error -> log.error("❌ Error obteniendo commits para {}/{}: {}", 
-                owner, repo, error.getMessage()))
+            .doOnSuccess(response -> log.info("✅ Commits obtenidos: {} commits para {}/{} (QueryId: {})", 
+                response.getBody().size(), owner, repo, query.getQueryId()))
+            .doOnError(error -> log.error("❌ Error obteniendo commits para {}/{} (QueryId: {}): {}", 
+                owner, repo, query.getQueryId(), error.getMessage()))
             .onErrorResume(error -> Mono.just(ResponseEntity.internalServerError().build()));
     }
 
@@ -84,10 +81,12 @@ public class RepositoryController {
             return Mono.just(ResponseEntity.badRequest().build());
         }
         
-        return getCommitDetailUseCase.execute(parts[0], parts[1], sha, principal)
+        GetRepositoryDetailQuery query = GetRepositoryDetailQuery.createCommitQuery(parts[0], parts[1], sha, principal);
+
+        return getRepositoryDetailQueryHandler.handleCommitQuery(query)
             .map(ResponseEntity::ok)
-            .doOnSuccess(response -> log.info("✅ Detalles del commit obtenidos: {} para {}/{}", sha, parts[0], parts[1]))
-            .doOnError(error -> log.error("❌ Error obteniendo detalles del commit {}: {}", sha, error.getMessage()))
+            .doOnSuccess(response -> log.info("✅ Detalles del commit obtenidos: {} para {}/{} (QueryId: {})", sha, parts[0], parts[1], query.getQueryId()))
+            .doOnError(error -> log.error("❌ Error obteniendo detalles del commit {} (QueryId: {}): {}", sha, query.getQueryId(), error.getMessage()))
             .onErrorResume(error -> Mono.just(ResponseEntity.internalServerError().build()));
     }
 

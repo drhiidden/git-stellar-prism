@@ -1,10 +1,8 @@
 package com.drhdn.ghvis.infrastructure.adapter.inbound.controller;
 
 import com.drhdn.ghvis.domain.entity.Commit;
-import com.drhdn.ghvis.infrastructure.adapter.outbound.external.GithubApiAdapter;
-import com.drhdn.ghvis.infrastructure.adapter.inbound.security.OAuth2UserService;
-import com.drhdn.ghvis.application.usecase.GetRepositoryCommitsUseCase;
-import com.drhdn.ghvis.application.usecase.GetCommitDetailUseCase;
+import com.drhdn.ghvis.application.handler.GetRepositoryCommitsQueryHandler;
+import com.drhdn.ghvis.application.handler.GetRepositoryDetailQueryHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.reactive.WebFluxTest;
@@ -12,13 +10,11 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.reactive.server.WebTestClient;
-import reactor.core.publisher.Flux;
 
 import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /**
@@ -33,16 +29,10 @@ class RepositoryControllerTest {
     private WebTestClient webTestClient;
 
     @MockBean
-    private GithubApiAdapter githubApiAdapter;
+    private GetRepositoryCommitsQueryHandler getRepositoryCommitsQueryHandler;
 
     @MockBean
-    private GetRepositoryCommitsUseCase getRepositoryCommitsUseCase;
-
-    @MockBean
-    private GetCommitDetailUseCase getCommitDetailUseCase;
-
-    @MockBean
-    private OAuth2UserService oAuth2UserService;
+    private GetRepositoryDetailQueryHandler getRepositoryDetailQueryHandler;
 
     @Test
     @WithMockUser(username = "testuser")
@@ -54,8 +44,8 @@ class RepositoryControllerTest {
             createMockCommit("def456", "fix: resolve bug in editor")
         );
 
-        when(getRepositoryCommitsUseCase.execute(eq("microsoft"), eq("vscode"), any()))
-            .thenReturn(Flux.fromIterable(mockCommits));
+        when(getRepositoryCommitsQueryHandler.handle(any()))
+            .thenReturn(reactor.core.publisher.Mono.just(mockCommits));
 
         // When & Then
         webTestClient.get()
@@ -104,7 +94,7 @@ class RepositoryControllerTest {
         String commitSha = "abc123";
         Commit mockCommit = createMockCommit(commitSha, "feat: add new feature");
 
-        when(getCommitDetailUseCase.execute(eq("microsoft"), eq("vscode"), eq(commitSha), any()))
+        when(getRepositoryDetailQueryHandler.handleCommitQuery(any()))
             .thenReturn(reactor.core.publisher.Mono.just(mockCommit));
 
         // When & Then
@@ -123,8 +113,8 @@ class RepositoryControllerTest {
         // Given
         String repoParam = "nonexistent/repo";
         
-        when(getRepositoryCommitsUseCase.execute(eq("nonexistent"), eq("repo"), any()))
-            .thenReturn(Flux.error(new RuntimeException("Repository not found")));
+        when(getRepositoryCommitsQueryHandler.handle(any()))
+            .thenReturn(reactor.core.publisher.Mono.error(new RuntimeException("Repository not found")));
 
         // When & Then
         webTestClient.get()
@@ -140,8 +130,8 @@ class RepositoryControllerTest {
         // Given
         String repoParam = "microsoft/vscode";
         
-        when(getRepositoryCommitsUseCase.execute(eq("microsoft"), eq("vscode"), any()))
-            .thenReturn(Flux.error(new RuntimeException("Rate limit exceeded")));
+        when(getRepositoryCommitsQueryHandler.handle(any()))
+            .thenReturn(reactor.core.publisher.Mono.error(new RuntimeException("Rate limit exceeded")));
 
         // When & Then
         webTestClient.get()
@@ -168,8 +158,8 @@ class RepositoryControllerTest {
         String repoParam = "microsoft/vscode";
         List<Commit> largeCommitList = createLargeCommitList(100);
 
-        when(getRepositoryCommitsUseCase.execute(eq("microsoft"), eq("vscode"), any()))
-            .thenReturn(Flux.fromIterable(largeCommitList));
+        when(getRepositoryCommitsQueryHandler.handle(any()))
+            .thenReturn(reactor.core.publisher.Mono.just(largeCommitList));
 
         // When & Then
         webTestClient.get()
@@ -188,8 +178,8 @@ class RepositoryControllerTest {
         String repoParam = "user/repo-with-special-chars";
         List<Commit> mockCommits = List.of(createMockCommit("abc123", "feat: special chars"));
 
-        when(getRepositoryCommitsUseCase.execute(eq("user"), eq("repo-with-special-chars"), any()))
-            .thenReturn(Flux.fromIterable(mockCommits));
+        when(getRepositoryCommitsQueryHandler.handle(any()))
+            .thenReturn(reactor.core.publisher.Mono.just(mockCommits));
 
         // When & Then
         webTestClient.get()

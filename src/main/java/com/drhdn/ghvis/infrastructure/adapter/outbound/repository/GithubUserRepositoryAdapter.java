@@ -10,10 +10,12 @@ import reactor.core.publisher.Mono;
 
 import java.security.Principal;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Map;
 
 /**
- * Adapter de infraestructura para operaciones de usuario usando GitHub API.
+ * Adapter para operaciones de usuario usando GitHub API.
+ * Implementa el puerto UserRepository siguiendo arquitectura hexagonal.
  * 
  * @author GitStellarPrism Team
  * @version 1.0.0
@@ -22,193 +24,180 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class GithubUserRepositoryAdapter implements UserRepository {
-    
+
     private final GithubApiAdapter githubApiAdapter;
-    
+
     @Override
     public Mono<User> getCurrentUser(Principal principal) {
-        log.info("🔍 Obteniendo usuario actual para: {}", principal.getName());
+        log.debug("🔍 Obteniendo usuario actual para: {}", 
+            principal != null ? principal.getName() : "anonymous");
         
         return githubApiAdapter.getCurrentUser(principal)
             .map(this::mapToUser)
-            .doOnSuccess(user -> log.info("✅ Usuario actual obtenido: {}", user.getLogin()))
-            .doOnError(error -> log.error("❌ Error obteniendo usuario actual: {}", error.getMessage()));
+            .doOnSuccess(user -> log.debug("✅ Usuario actual obtenido: {}", user.getLogin()))
+            .doOnError(error -> log.error("❌ Error obteniendo usuario actual: {}", error.getMessage()))
+            .onErrorResume(error -> Mono.error(new RuntimeException("Error al obtener usuario actual", error)));
     }
-    
+
     @Override
     public Mono<User> getUserByLogin(String login, Principal principal) {
-        log.info("🔍 Obteniendo usuario por login: {}", login);
+        log.debug("🔍 Obteniendo usuario por login: {}", login);
         
         return githubApiAdapter.getUserByLogin(login, principal)
             .map(this::mapToUser)
-            .doOnSuccess(user -> log.info("✅ Usuario obtenido por login: {}", user.getLogin()))
-            .doOnError(error -> log.error("❌ Error obteniendo usuario por login {}: {}", login, error.getMessage()));
+            .doOnSuccess(user -> log.debug("✅ Usuario obtenido por login: {}", login))
+            .doOnError(error -> log.error("❌ Error obteniendo usuario por login {}: {}", login, error.getMessage()))
+            .onErrorResume(error -> Mono.error(new RuntimeException("Error al obtener usuario: " + login, error)));
     }
-    
+
     @Override
     public Mono<User> getUserById(Long userId, Principal principal) {
-        log.info("🔍 Obteniendo usuario por ID: {}", userId);
+        log.debug("🔍 Obteniendo usuario por ID: {}", userId);
         
         return githubApiAdapter.getUserById(userId, principal)
             .map(this::mapToUser)
-            .doOnSuccess(user -> log.info("✅ Usuario obtenido por ID: {}", user.getId()))
-            .doOnError(error -> log.error("❌ Error obteniendo usuario por ID {}: {}", userId, error.getMessage()));
+            .doOnSuccess(user -> log.debug("✅ Usuario obtenido por ID: {}", userId))
+            .doOnError(error -> log.error("❌ Error obteniendo usuario por ID {}: {}", userId, error.getMessage()))
+            .onErrorResume(error -> Mono.error(new RuntimeException("Error al obtener usuario ID: " + userId, error)));
     }
-    
+
     @Override
     public Mono<Boolean> userExists(String login, Principal principal) {
-        log.info("🔍 Verificando existencia de usuario: {}", login);
+        log.debug("🔍 Verificando existencia de usuario: {}", login);
         
         return getUserByLogin(login, principal)
             .map(user -> true)
             .onErrorReturn(false)
-            .doOnSuccess(exists -> log.info("✅ Usuario {} existe: {}", login, exists))
-            .doOnError(error -> log.error("❌ Error verificando existencia de usuario {}: {}", login, error.getMessage()));
+            .doOnNext(exists -> log.debug("✅ Usuario {} existe: {}", login, exists));
     }
-    
+
     @Override
-    public Mono<UserStats> getUserStats(String login, Principal principal) {
-        log.info("🔍 Obteniendo estadísticas de usuario: {}", login);
+    public Mono<UserRepository.UserStats> getUserStats(String login, Principal principal) {
+        log.debug("🔍 Obteniendo estadísticas de usuario: {}", login);
         
         return getUserByLogin(login, principal)
-            .map(this::buildUserStats)
-            .doOnSuccess(stats -> log.info("✅ Estadísticas obtenidas para usuario: {}", login))
+            .<UserRepository.UserStats>map(user -> new UserStatsImpl(user, principal))
+            .doOnSuccess(stats -> log.debug("✅ Estadísticas obtenidas para usuario: {}", login))
             .doOnError(error -> log.error("❌ Error obteniendo estadísticas de usuario {}: {}", login, error.getMessage()));
     }
-    
+
     /**
-     * Mapea la respuesta de GitHub API a la entidad User del dominio.
+     * Convierte un mapa de respuesta de la API a un objeto User.
+     * 
+     * @param userMap Mapa con datos del usuario desde GitHub API
+     * @return Objeto User
      */
-    private User mapToUser(Map<String, Object> githubUser) {
+    private User mapToUser(Map<String, Object> userMap) {
         return User.builder()
-            .id(getLongValue(githubUser, "id"))
-            .login(getStringValue(githubUser, "login"))
-            .name(getStringValue(githubUser, "name"))
-            .email(getStringValue(githubUser, "email"))
-            .avatarUrl(getStringValue(githubUser, "avatar_url"))
-            .bio(getStringValue(githubUser, "bio"))
-            .location(getStringValue(githubUser, "location"))
-            .publicRepos(getIntegerValue(githubUser, "public_repos"))
-            .totalPrivateRepos(getIntegerValue(githubUser, "total_private_repos"))
-            .followers(getIntegerValue(githubUser, "followers"))
-            .following(getIntegerValue(githubUser, "following"))
-            .createdAt(parseInstant(githubUser, "created_at"))
-            .updatedAt(parseInstant(githubUser, "updated_at"))
-            .htmlUrl(getStringValue(githubUser, "html_url"))
-            .type(getStringValue(githubUser, "type"))
-            .verified(getBooleanValue(githubUser, "verified"))
-            .bot(getBooleanValue(githubUser, "bot"))
-            .siteAdmin(getBooleanValue(githubUser, "site_admin"))
+            .id(getLong(userMap, "id"))
+            .login(getString(userMap, "login"))
+            .name(getString(userMap, "name"))
+            .email(getString(userMap, "email"))
+            .avatarUrl(getString(userMap, "avatar_url"))
+            .bio(getString(userMap, "bio"))
+            .location(getString(userMap, "location"))
+            .publicRepos(getInt(userMap, "public_repos"))
+            .followers(getInt(userMap, "followers"))
+            .following(getInt(userMap, "following"))
+            .createdAt(getInstant(userMap, "created_at"))
+            .updatedAt(getInstant(userMap, "updated_at"))
+            .htmlUrl(getString(userMap, "html_url"))
             .build();
     }
-    
+
     /**
-     * Construye estadísticas de usuario basadas en la entidad User.
+     * Implementación de UserStats que calcula estadísticas del usuario.
      */
-    private UserStats buildUserStats(User user) {
-        return new UserStats() {
-            @Override
-            public Integer getTotalRepositories() {
-                return user.getTotalRepos();
-            }
-            
-            @Override
-            public Integer getPublicRepositories() {
-                return user.getPublicRepos();
-            }
-            
-            @Override
-            public Integer getPrivateRepositories() {
-                return user.getTotalPrivateRepos();
-            }
-            
-            @Override
-            public Integer getFollowers() {
-                return user.getFollowers();
-            }
-            
-            @Override
-            public Integer getFollowing() {
-                return user.getFollowing();
-            }
-            
-            @Override
-            public Integer getTotalStars() {
-                // TODO: Implementar obtención de stars totales
-                return 0;
-            }
-            
-            @Override
-            public Integer getTotalForks() {
-                // TODO: Implementar obtención de forks totales
-                return 0;
-            }
-            
-            @Override
-            public java.time.Instant getAccountCreatedAt() {
-                return user.getCreatedAt();
-            }
-            
-            @Override
-            public java.time.Instant getLastActivityAt() {
-                return user.getUpdatedAt();
-            }
-        };
-    }
-    
-    /**
-     * Obtiene un valor Long de forma segura del mapa.
-     */
-    private Long getLongValue(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        if (value instanceof Number) {
-            return ((Number) value).longValue();
+    private static class UserStatsImpl implements UserRepository.UserStats {
+        private final User user;
+        private final Principal principal;
+
+        public UserStatsImpl(User user, Principal principal) {
+            this.user = user;
+            this.principal = principal;
         }
-        return null;
+
+        @Override
+        public Integer getTotalRepositories() {
+            return user.getPublicRepos(); // Solo repos públicos por ahora
+        }
+
+        @Override
+        public Integer getPublicRepositories() {
+            return user.getPublicRepos();
+        }
+
+        @Override
+        public Integer getPrivateRepositories() {
+            return 0; // No disponible en la API pública
+        }
+
+        @Override
+        public Integer getFollowers() {
+            return user.getFollowers();
+        }
+
+        @Override
+        public Integer getFollowing() {
+            return user.getFollowing();
+        }
+
+        @Override
+        public Integer getTotalStars() {
+            return 0; // Requiere consulta adicional
+        }
+
+        @Override
+        public Integer getTotalForks() {
+            return 0; // Requiere consulta adicional
+        }
+
+        @Override
+        public Instant getAccountCreatedAt() {
+            return user.getCreatedAt();
+        }
+
+        @Override
+        public Instant getLastActivityAt() {
+            return user.getUpdatedAt();
+        }
     }
-    
-    /**
-     * Obtiene un valor String de forma segura del mapa.
-     */
-    private String getStringValue(Map<String, Object> map, String key) {
+
+    // Métodos de utilidad para extraer valores de mapas
+
+    private String getString(Map<String, Object> map, String key) {
         Object value = map.get(key);
-        return value != null ? value.toString() : null;
+        return value != null ? String.valueOf(value) : null;
     }
-    
-    /**
-     * Obtiene un valor Integer de forma segura del mapa.
-     */
-    private Integer getIntegerValue(Map<String, Object> map, String key) {
+
+    private Integer getInt(Map<String, Object> map, String key) {
         Object value = map.get(key);
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }
-        return null;
+        return 0;
     }
-    
-    /**
-     * Obtiene un valor Boolean de forma segura del mapa.
-     */
-    private Boolean getBooleanValue(Map<String, Object> map, String key) {
+
+    private Long getLong(Map<String, Object> map, String key) {
         Object value = map.get(key);
-        if (value instanceof Boolean) {
-            return (Boolean) value;
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
         }
-        return null;
+        return 0L;
     }
-    
-    /**
-     * Parsea un Instant de forma segura del mapa.
-     */
-    private Instant parseInstant(Map<String, Object> map, String key) {
-        String value = getStringValue(map, key);
-        if (value != null) {
-            try {
-                return Instant.parse(value);
-            } catch (Exception e) {
-                log.warn("⚠️ Error parseando fecha para {}: {}", key, value);
-            }
+
+    private Boolean getBoolean(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value instanceof Boolean ? (Boolean) value : false;
+    }
+
+    private Instant getInstant(Map<String, Object> map, String key) {
+        String dateStr = getString(map, key);
+        try {
+            return dateStr != null ? Instant.parse(dateStr) : null;
+        } catch (Exception e) {
+            log.warn("⚠️ Error parseando fecha {}: {}", key, dateStr);
+            return null;
         }
-        return null;
     }
 } 

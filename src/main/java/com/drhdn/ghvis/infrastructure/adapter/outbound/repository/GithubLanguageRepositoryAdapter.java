@@ -2,6 +2,7 @@ package com.drhdn.ghvis.infrastructure.adapter.outbound.repository;
 
 import com.drhdn.ghvis.domain.entity.Language;
 import com.drhdn.ghvis.domain.port.LanguageRepository;
+import com.drhdn.ghvis.domain.port.RepositoryRepository;
 import com.drhdn.ghvis.infrastructure.adapter.outbound.external.GithubApiAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,10 +12,12 @@ import reactor.core.publisher.Mono;
 
 import java.security.Principal;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Map;
 
 /**
- * Adapter de infraestructura para operaciones de lenguajes usando GitHub API.
+ * Adapter para operaciones de lenguajes usando GitHub API.
+ * Implementa el puerto LanguageRepository siguiendo arquitectura hexagonal.
  * 
  * @author GitStellarPrism Team
  * @version 1.0.0
@@ -23,179 +26,181 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Slf4j
 public class GithubLanguageRepositoryAdapter implements LanguageRepository {
-    
+
     private final GithubApiAdapter githubApiAdapter;
-    
+    private final RepositoryRepository repositoryRepository;
+
     @Override
     public Flux<Language> getLanguagesByRepository(String owner, String repo, Principal principal) {
-        log.info("🔍 Obteniendo lenguajes para repositorio: {}/{}", owner, repo);
+        log.debug("🔍 Obteniendo lenguajes para repositorio: {}/{}", owner, repo);
         
         return githubApiAdapter.getLanguages(owner, repo, principal)
-            .flatMapMany(languagesMap -> Flux.fromIterable(languagesMap.entrySet()))
-            .map(entry -> buildLanguage(owner, repo, entry.getKey(), entry.getValue()))
-            .doOnComplete(() -> log.info("✅ Lenguajes obtenidos para repositorio: {}/{}", owner, repo))
-            .doOnError(error -> log.error("❌ Error obteniendo lenguajes para {}/{}: {}", owner, repo, error.getMessage()));
+            .flatMapMany(languagesMap -> 
+                Flux.fromIterable(languagesMap.entrySet())
+                    .map(entry -> mapToLanguage(entry, owner, repo))
+            )
+            .doOnComplete(() -> log.debug("✅ Lenguajes obtenidos para: {}/{}", owner, repo))
+            .doOnError(error -> log.error("❌ Error obteniendo lenguajes para {}/{}: {}", 
+                owner, repo, error.getMessage()));
     }
-    
+
     @Override
     public Mono<Map<String, Long>> getLanguagesMap(String owner, String repo, Principal principal) {
-        log.info("🔍 Obteniendo mapa de lenguajes para repositorio: {}/{}", owner, repo);
+        log.debug("🔍 Obteniendo mapa de lenguajes para repositorio: {}/{}", owner, repo);
         
         return githubApiAdapter.getLanguages(owner, repo, principal)
-            .doOnSuccess(languages -> log.info("✅ Mapa de lenguajes obtenido para repositorio: {}/{}", owner, repo))
-            .doOnError(error -> log.error("❌ Error obteniendo mapa de lenguajes para {}/{}: {}", owner, repo, error.getMessage()));
+            .doOnSuccess(langMap -> log.debug("✅ Mapa de lenguajes obtenido para: {}/{} ({})", 
+                owner, repo, langMap.size()))
+            .doOnError(error -> log.error("❌ Error obteniendo mapa de lenguajes para {}/{}: {}", 
+                owner, repo, error.getMessage()))
+            .onErrorReturn(Collections.emptyMap());
     }
-    
+
     @Override
     public Mono<Language> getPrimaryLanguage(String owner, String repo, Principal principal) {
-        log.info("🔍 Obteniendo lenguaje principal para repositorio: {}/{}", owner, repo);
+        log.debug("🔍 Obteniendo lenguaje principal para repositorio: {}/{}", owner, repo);
         
         return getLanguagesMap(owner, repo, principal)
-            .flatMap(languagesMap -> {
-                if (languagesMap.isEmpty()) {
-                    return Mono.empty();
-                }
-                
-                // Encontrar el lenguaje con más bytes
-                Map.Entry<String, Long> primaryEntry = languagesMap.entrySet().stream()
-                    .max(Map.Entry.comparingByValue())
-                    .orElse(null);
-                
-                if (primaryEntry != null) {
-                    Language primaryLanguage = buildLanguage(owner, repo, primaryEntry.getKey(), primaryEntry.getValue());
-                    return Mono.just(primaryLanguage);
-                }
-                
-                return Mono.empty();
-            })
-            .doOnSuccess(language -> {
-                if (language != null) {
-                    log.info("✅ Lenguaje principal obtenido: {} para {}/{}", language.getName(), owner, repo);
-                } else {
-                    log.info("ℹ️ No se encontró lenguaje principal para {}/{}", owner, repo);
-                }
-            })
-            .doOnError(error -> log.error("❌ Error obteniendo lenguaje principal para {}/{}: {}", owner, repo, error.getMessage()));
+            .map(this::findPrimaryLanguage)
+            .map(entry -> mapToLanguage(entry, owner, repo))
+            .doOnSuccess(language -> log.debug("✅ Lenguaje principal obtenido para {}/{}: {}", 
+                owner, repo, language.getName()))
+            .doOnError(error -> log.error("❌ Error obteniendo lenguaje principal para {}/{}: {}", 
+                owner, repo, error.getMessage()));
     }
-    
+
     @Override
     public Flux<LanguageStats> getLanguageStatsByUser(String username, Principal principal) {
-        log.info("🔍 Obteniendo estadísticas de lenguajes para usuario: {}", username);
+        log.debug("🔍 Obteniendo estadísticas de lenguajes para usuario: {}", username);
         
-        // TODO: Implementar obtención de estadísticas de lenguajes por usuario
-        // Esto requeriría obtener todos los repositorios del usuario y luego sus lenguajes
-        return Flux.<LanguageStats>empty()
-            .doOnComplete(() -> log.info("ℹ️ Estadísticas de lenguajes por usuario no implementadas aún para: {}", username));
+        return repositoryRepository.findByUser(principal)
+            .flatMap(repository ->
+                getLanguagesMap(repository.getOwner(), repository.getName(), principal)
+                    .<LanguageRepository.LanguageStats>map(langMap -> new LanguageStatsImpl(repository, langMap))
+                    .onErrorReturn((LanguageRepository.LanguageStats) new LanguageStatsImpl(repository, Collections.emptyMap()))
+            )
+            .doOnComplete(() -> log.debug("✅ Estadísticas de lenguajes obtenidas para usuario: {}", username))
+            .doOnError(error -> log.error("❌ Error obteniendo estadísticas de lenguajes para usuario {}: {}", 
+                username, error.getMessage()));
     }
-    
+
     @Override
     public Flux<Language> getTopLanguagesByUser(String username, Principal principal, int limit) {
-        log.info("🔍 Obteniendo top {} lenguajes para usuario: {}", limit, username);
+        log.debug("🔍 Obteniendo top {} lenguajes para usuario: {}", limit, username);
         
-        // TODO: Implementar obtención de top lenguajes por usuario
-        // Esto requeriría agregar todos los lenguajes de todos los repositorios del usuario
-        return Flux.<Language>empty()
-            .doOnComplete(() -> log.info("ℹ️ Top lenguajes por usuario no implementados aún para: {}", username));
+        return getLanguageStatsByUser(username, principal)
+            .map(stats -> Language.builder()
+                .name(stats.getPrimaryLanguage())
+                .bytes(0L) // Se podría calcular sumando todos los repositorios
+                .percentage(stats.getPrimaryLanguagePercentage())
+                .repositoryOwner(stats.getRepositoryOwner())
+                .repositoryName(stats.getRepositoryName())
+                .analyzedAt(stats.getAnalyzedAt())
+                .build())
+            .distinct(Language::getName)
+            .take(limit)
+            .doOnComplete(() -> log.debug("✅ Top {} lenguajes obtenidos para usuario: {}", limit, username));
     }
-    
+
     @Override
     public Mono<Boolean> hasLanguages(String owner, String repo, Principal principal) {
-        log.info("🔍 Verificando si el repositorio {}/{} tiene lenguajes", owner, repo);
+        log.debug("🔍 Verificando si repositorio {}/{} tiene lenguajes", owner, repo);
         
         return getLanguagesMap(owner, repo, principal)
-            .map(languagesMap -> !languagesMap.isEmpty())
+            .map(langMap -> !langMap.isEmpty())
             .onErrorReturn(false)
-            .doOnSuccess(hasLanguages -> log.info("✅ Repositorio {}/{} tiene lenguajes: {}", owner, repo, hasLanguages))
-            .doOnError(error -> log.error("❌ Error verificando lenguajes para {}/{}: {}", owner, repo, error.getMessage()));
+            .doOnNext(hasLangs -> log.debug("✅ Repositorio {}/{} tiene lenguajes: {}", 
+                owner, repo, hasLangs));
     }
-    
+
     /**
-     * Construye una entidad Language basada en los datos de GitHub API.
+     * Convierte una entrada del mapa de lenguajes a un objeto Language.
+     * 
+     * @param entry Entrada del mapa (nombre -> bytes)
+     * @param owner Propietario del repositorio
+     * @param repo Nombre del repositorio
+     * @return Objeto Language
      */
-    private Language buildLanguage(String owner, String repo, String languageName, Long bytes) {
+    private Language mapToLanguage(Map.Entry<String, Long> entry, String owner, String repo) {
         return Language.builder()
-            .name(languageName)
-            .repositoryName(repo)
+            .name(entry.getKey())
+            .bytes(entry.getValue())
+            .percentage(0.0) // Se calcularía con el total
             .repositoryOwner(owner)
-            .bytes(bytes)
-            .percentage(calculatePercentage(bytes)) // TODO: Calcular porcentaje real
-            .estimatedLines(estimateLines(bytes))
-            .color(getLanguageColor(languageName))
-            .type(getLanguageType(languageName))
-            .isProgrammingLanguage(isProgrammingLanguage(languageName))
+            .repositoryName(repo)
             .analyzedAt(Instant.now())
-            .createdAt(Instant.now())
-            .updatedAt(Instant.now())
             .build();
     }
-    
+
     /**
-     * Calcula el porcentaje del lenguaje.
+     * Encuentra el lenguaje principal (el que tiene más bytes).
+     * 
+     * @param languagesMap Mapa de lenguajes
+     * @return Entrada del lenguaje principal
      */
-    private Double calculatePercentage(Long bytes) {
-        if (bytes == null || bytes == 0) return 0.0;
-        
-        // Calcular el porcentaje basado en el total de bytes del repositorio
-        // Este es un cálculo aproximado, idealmente deberíamos tener el total de bytes
-        // de todos los lenguajes del repositorio
-        
-        // Asumimos un repositorio promedio de 1MB (1048576 bytes) como referencia
-        // para evitar tener que hacer una llamada adicional para obtener el total
-        long estimatedTotalBytes = 1048576;
-        
-        // Calcular porcentaje con 2 decimales
-        double percentage = (bytes.doubleValue() / estimatedTotalBytes) * 100.0;
-        
-        // Limitar a máximo 100%
-        percentage = Math.min(percentage, 100.0);
-        
-        // Redondear a 2 decimales
-        return Math.round(percentage * 100.0) / 100.0;
+    private Map.Entry<String, Long> findPrimaryLanguage(Map<String, Long> languagesMap) {
+        return languagesMap.entrySet().stream()
+            .max(Map.Entry.comparingByValue())
+            .orElse(Map.entry("Unknown", 0L));
     }
-    
+
     /**
-     * Estima el número de líneas basado en bytes.
+     * Implementación de LanguageStats para estadísticas de lenguajes.
      */
-    private Long estimateLines(Long bytes) {
-        if (bytes == null) return 0L;
-        // Estimación aproximada: 1 línea = 50 bytes en promedio
-        return bytes / 50;
-    }
-    
-    /**
-     * Obtiene el color del lenguaje (placeholder).
-     */
-    private String getLanguageColor(String languageName) {
-        // TODO: Implementar mapeo real de colores de lenguajes
-        return switch (languageName.toLowerCase()) {
-            case "java" -> "#b07219";
-            case "javascript" -> "#f1e05a";
-            case "python" -> "#3572A5";
-            case "typescript" -> "#2b7489";
-            case "go" -> "#00ADD8";
-            case "rust" -> "#dea584";
-            case "c++" -> "#f34b7d";
-            case "c#" -> "#178600";
-            default -> "#000000";
-        };
-    }
-    
-    /**
-     * Determina el tipo de lenguaje.
-     */
-    private String getLanguageType(String languageName) {
-        return switch (languageName.toLowerCase()) {
-            case "java", "javascript", "python", "typescript", "go", "rust", "c++", "c#" -> "programming";
-            case "html", "css", "xml", "yaml", "json" -> "markup";
-            case "sql", "csv" -> "data";
-            default -> "other";
-        };
-    }
-    
-    /**
-     * Determina si es un lenguaje de programación.
-     */
-    private Boolean isProgrammingLanguage(String languageName) {
-        return "programming".equals(getLanguageType(languageName));
+    private static class LanguageStatsImpl implements LanguageRepository.LanguageStats {
+        private final com.drhdn.ghvis.domain.entity.Repository repository;
+        private final Map<String, Long> languagesMap;
+        private final Map.Entry<String, Long> primaryLanguage;
+        private final long totalBytes;
+
+        public LanguageStatsImpl(com.drhdn.ghvis.domain.entity.Repository repository, 
+                               Map<String, Long> languagesMap) {
+            this.repository = repository;
+            this.languagesMap = languagesMap;
+            this.primaryLanguage = findPrimaryLanguageEntry(languagesMap);
+            this.totalBytes = languagesMap.values().stream().mapToLong(Long::longValue).sum();
+        }
+
+        private Map.Entry<String, Long> findPrimaryLanguageEntry(Map<String, Long> langMap) {
+            return langMap.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .orElse(Map.entry("Unknown", 0L));
+        }
+
+        @Override
+        public String getRepositoryName() {
+            return repository.getName();
+        }
+
+        @Override
+        public String getRepositoryOwner() {
+            return repository.getOwner();
+        }
+
+        @Override
+        public String getPrimaryLanguage() {
+            return primaryLanguage.getKey();
+        }
+
+        @Override
+        public Double getPrimaryLanguagePercentage() {
+            if (totalBytes == 0) return 0.0;
+            return (primaryLanguage.getValue().doubleValue() / totalBytes) * 100.0;
+        }
+
+        @Override
+        public Integer getTotalLanguages() {
+            return languagesMap.size();
+        }
+
+        @Override
+        public Long getTotalBytes() {
+            return totalBytes;
+        }
+
+        @Override
+        public Instant getAnalyzedAt() {
+            return Instant.now();
+        }
     }
 } 

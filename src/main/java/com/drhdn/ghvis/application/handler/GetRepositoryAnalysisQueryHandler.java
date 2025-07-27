@@ -3,6 +3,7 @@ package com.drhdn.ghvis.application.handler;
 import com.drhdn.ghvis.application.query.GetRepositoryAnalysisQuery;
 import com.drhdn.ghvis.domain.port.CacheService;
 import com.drhdn.ghvis.domain.port.LanguageRepository;
+import com.drhdn.ghvis.domain.port.TechnologyRepository;
 import com.drhdn.ghvis.domain.event.EventStore;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class GetRepositoryAnalysisQueryHandler {
     private final LanguageRepository languageRepository;
     private final CacheService cacheService;
     private final EventStore eventStore;
+    private final TechnologyRepository technologyRepository;
     
     /**
      * Maneja la query para obtener análisis de repositorio.
@@ -138,16 +140,27 @@ public class GetRepositoryAnalysisQueryHandler {
      * Obtiene las tecnologías utilizadas en un repositorio.
      */
     private Mono<List<Object>> getTechnologies(String owner, String repo, Principal principal) {
-        // TODO: Implementar detección de tecnologías
-        return Mono.just(Collections.emptyList());
+        return technologyRepository.detectTechnologies(owner, repo, principal)
+            .collectList()
+            .map(list -> (List<Object>) (List<?>) list)
+            .defaultIfEmpty(Collections.emptyList());
     }
     
     /**
      * Obtiene la estructura del proyecto.
      */
     private Mono<Map<String, Object>> getProjectStructure(String owner, String repo, Principal principal) {
-        // TODO: Implementar análisis de estructura del proyecto
-        return Mono.just(Collections.emptyMap());
+        // Aproximación rápida: calcular número de archivos por extensión a partir de lenguajes
+        return languageRepository.getLanguagesMap(owner, repo, principal)
+            .map(langMap -> {
+                int totalFiles = langMap.size();
+                Map<String, Object> structure = new HashMap<>();
+                structure.put("totalFiles", totalFiles);
+                structure.put("rootFolders", Collections.emptyList());
+                structure.put("generatedAt", java.time.Instant.now().toString());
+                return structure;
+            })
+            .defaultIfEmpty(Collections.emptyMap());
     }
     
     /**
