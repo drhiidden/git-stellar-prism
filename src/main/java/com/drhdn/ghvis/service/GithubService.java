@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 import java.security.Principal;
 import java.time.Instant;
@@ -40,6 +41,7 @@ public class GithubService {
 
     private final WebClient githubWebClient;
     private final WebClient publicWebClient;
+    private final RateLimitManager rateLimitManager;
     
     @Value("${github.api.token:}")
     private String fallbackGithubToken;
@@ -48,9 +50,11 @@ public class GithubService {
      * Constructor que inyecta correctamente los WebClients configurados.
      */
     public GithubService(@Qualifier("githubWebClient") WebClient githubWebClient, 
-                        @Qualifier("webClient") WebClient publicWebClient) {
+                        @Qualifier("webClient") WebClient publicWebClient,
+                        RateLimitManager rateLimitManager) {
         this.githubWebClient = githubWebClient;
         this.publicWebClient = publicWebClient;
+        this.rateLimitManager = rateLimitManager;
     }
     
     /**
@@ -123,7 +127,7 @@ public class GithubService {
     }
     
     /**
-     * Obtiene los commits de un repositorio usando OAuth2.
+     * Obtiene los commits de un repositorio usando OAuth2 con rate limiting integrado.
      * 
      * @param owner Propietario del repositorio
      * @param repo Nombre del repositorio
@@ -131,18 +135,36 @@ public class GithubService {
      * @return Flux de commits
      */
     public Flux<Commit> getCommits(String owner, String repo, Principal principal) {
-        return githubWebClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/repos/{owner}/{repo}/commits")
-                        .queryParam("per_page", 100)
-                        .build(owner, repo))
-                .attributes(clientRegistrationId("github"))
-                .retrieve()
-                .bodyToFlux(Map.class)
-                .map(this::mapToCommit)
-                .doOnSubscribe(subscription -> 
-                    log.debug("Obteniendo commits para repositorio: {}/{}", owner, repo))
-                .doOnError(e -> log.error("Error al obtener los commits de {}/{}: {}", owner, repo, e.getMessage()));
+        String endpoint = String.format("/repos/%s/%s/commits", owner, repo);
+        
+        return rateLimitManager.canMakeRequest(endpoint, principal)
+            .flatMapMany(canMake -> {
+                if (!canMake) {
+                    return Flux.error(new RateLimitManager.RateLimitExceededException(
+                        "Rate limit excedido para commits", 60));
+                }
+                
+                return githubWebClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/repos/{owner}/{repo}/commits")
+                            .queryParam("per_page", 100)
+                            .build(owner, repo))
+                    .attributes(clientRegistrationId("github"))
+                    .retrieve()
+                    .toEntityFlux(Map.class)
+                    .flatMapMany(response -> {
+                        // Actualizar rate limits basado en headers
+                        rateLimitManager.updateRateLimits(endpoint, principal, response.getHeaders())
+                            .subscribe();
+                        
+                        return response.getBody();
+                    })
+                    .map(this::mapToCommit)
+                    .retryWhen(rateLimitManager.createRetryPolicy(endpoint, principal))
+                    .doOnSubscribe(subscription -> 
+                        log.debug("Obteniendo commits para repositorio: {}/{}", owner, repo))
+                    .doOnError(e -> log.error("Error al obtener los commits de {}/{}: {}", owner, repo, e.getMessage()));
+            });
     }
     
     /**
