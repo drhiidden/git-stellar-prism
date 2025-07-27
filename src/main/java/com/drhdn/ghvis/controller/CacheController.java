@@ -1,200 +1,180 @@
 package com.drhdn.ghvis.controller;
 
-import com.drhdn.ghvis.service.CommitCacheService;
-import com.drhdn.ghvis.service.UserRepositoryCacheService;
-import com.drhdn.ghvis.service.GithubService;
+import com.drhdn.ghvis.service.ReactiveCacheService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.security.Principal;
-import java.util.Map;
-import java.util.HashMap;
 
 /**
- * Controlador para gestión de caché y exportaciones de análisis.
+ * Controlador para gestión del cache reactivo.
+ * 
+ * Proporciona endpoints para:
+ * - Estadísticas del cache
+ * - Limpieza de cache
+ * - Warm-up del cache
+ * - Gestión de TTL
  */
 @RestController
+@RequestMapping("/api/cache")
 @RequiredArgsConstructor
 @Slf4j
-@RequestMapping("/api/cache")
 public class CacheController {
 
-    private final UserRepositoryCacheService userRepositoryCacheService;
-    private final CommitCacheService commitCacheService;
-    private final GithubService githubService;
+    private final ReactiveCacheService reactiveCacheService;
 
     /**
-     * Obtiene estadísticas del caché de repositorios.
+     * Obtiene estadísticas del cache.
+     * 
+     * @return Estadísticas detalladas del cache
      */
-    @GetMapping(value = "/stats", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Object> getCacheStats(Principal principal) {
-        if (principal == null) {
-            return Mono.just(Map.of("error", "Usuario no autenticado"));
-        }
-        
-        return userRepositoryCacheService.getCacheStats()
-            .map(stats -> (Object) stats)
-            .doOnNext(stats -> log.debug("Estadísticas de caché obtenidas"))
-            .onErrorReturn(Map.of("error", "Error obteniendo estadísticas de caché"));
-    }
-
-    /**
-     * Limpia el caché del usuario actual.
-     */
-    @DeleteMapping(value = "/user", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Object> clearUserCache(Principal principal) {
-        if (principal == null) {
-            return Mono.just(Map.of("error", "Usuario no autenticado"));
-        }
-        
-        return Mono.fromRunnable(() -> {
-            userRepositoryCacheService.clearUserCache(principal.getName());
-            log.info("Caché de usuario limpiado: {}", principal.getName());
-        })
-        .then(Mono.just((Object) Map.of(
-            "success", true,
-            "message", "Caché del usuario limpiado correctamente"
-        )))
-        .onErrorReturn(Map.of("error", "Error limpiando caché del usuario"));
-    }
-
-    /**
-     * Limpia el caché de commits para un repositorio específico.
-     */
-    @DeleteMapping(value = "/commits/{owner}/{repo}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Object> clearCommitCache(@PathVariable String owner, @PathVariable String repo, Principal principal) {
-        if (principal == null) {
-            return Mono.just(Map.of("error", "Usuario no autenticado"));
-        }
-        
-        return Mono.fromRunnable(() -> {
-            commitCacheService.clearCache(owner, repo);
-            log.info("Caché de commits limpiado para: {}/{}", owner, repo);
-        })
-        .then(Mono.just((Object) Map.of(
-            "success", true,
-            "message", String.format("Caché de commits limpiado para %s/%s", owner, repo)
-        )))
-        .onErrorReturn(Map.of("error", "Error limpiando caché de commits"));
-    }
-
-    /**
-     * Exporta análisis completo de un repositorio.
-     * Incluye: commits, issues, pull requests, análisis técnico, timeline
-     */
-    @GetMapping(value = "/export/{owner}/{repo}", produces = MediaType.APPLICATION_JSON_VALUE)
-    public Mono<Object> exportRepositoryAnalysis(@PathVariable String owner, @PathVariable String repo, 
-                                                  @RequestParam(defaultValue = "all") String type,
-                                                  Principal principal) {
-        if (principal == null) {
-            return Mono.just(Map.of("error", "Usuario no autenticado"));
-        }
-        
-        return generateExportData(owner, repo, type, principal)
-            .doOnNext(data -> log.info("Análisis exportado para {}/{} (tipo: {})", owner, repo, type))
-            .onErrorReturn(Map.of("error", "Error generando exportación"));
-    }
-
-    /**
-     * Genera los datos de exportación según el tipo solicitado.
-     */
-    private Mono<Object> generateExportData(String owner, String repo, String type, Principal principal) {
-        Map<String, Object> exportData = new HashMap<>();
-        exportData.put("repository", owner + "/" + repo);
-        exportData.put("exportType", type);
-        exportData.put("timestamp", java.time.Instant.now().toString());
-        exportData.put("user", principal.getName());
-
-        switch (type.toLowerCase()) {
-            case "commits":
-                return exportCommitsOnly(owner, repo, principal, exportData);
-            case "timeline":
-                return exportTimelineOnly(owner, repo, principal, exportData);
-            case "technical":
-                return exportTechnicalOnly(owner, repo, principal, exportData);
-            case "all":
-            default:
-                return exportCompleteAnalysis(owner, repo, principal, exportData);
-        }
-    }
-
-    /**
-     * Exporta solo commits.
-     */
-    private Mono<Object> exportCommitsOnly(String owner, String repo, Principal principal, Map<String, Object> exportData) {
-        return commitCacheService.getCommits(owner, repo, principal)
-            .collectList()
-            .map(commits -> {
-                exportData.put("commits", commits);
-                exportData.put("totalCommits", commits.size());
-                return (Object) exportData;
+    @GetMapping("/stats")
+    public Mono<ResponseEntity<ReactiveCacheService.CacheStats>> getCacheStats() {
+        return reactiveCacheService.getCacheStats()
+            .map(stats -> {
+                log.info("Estadísticas del cache solicitadas - Hit Rate: {:.2f}%, Entradas: {}", 
+                        stats.getHitRate() * 100, stats.getTotalEntries());
+                return ResponseEntity.ok(stats);
+            })
+            .onErrorResume(error -> {
+                log.error("Error obteniendo estadísticas del cache", error);
+                return Mono.just(ResponseEntity.internalServerError().build());
             });
     }
 
     /**
-     * Exporta datos para timeline.
+     * Limpia el cache para un repositorio específico.
+     * 
+     * @param owner Propietario del repositorio
+     * @param repo Nombre del repositorio
+     * @return Respuesta de confirmación
      */
-    private Mono<Object> exportTimelineOnly(String owner, String repo, Principal principal, Map<String, Object> exportData) {
-        return Mono.zip(
-            commitCacheService.getCommits(owner, repo, principal).collectList(),
-            githubService.getPullRequests(owner, repo, principal).collectList(),
-            githubService.getIssues(owner, repo, principal).collectList()
-        ).map(tuple -> {
-            exportData.put("timelineData", Map.of(
-                "commits", tuple.getT1(),
-                "pullRequests", tuple.getT2(),
-                "issues", tuple.getT3()
-            ));
-            return (Object) exportData;
-        });
+    @DeleteMapping("/repository/{owner}/{repo}")
+    public Mono<ResponseEntity<String>> clearRepositoryCache(
+            @PathVariable String owner,
+            @PathVariable String repo) {
+        
+        return reactiveCacheService.clearRepositoryCache(owner, repo)
+            .then(Mono.just(ResponseEntity.ok("Cache limpiado para " + owner + "/" + repo)))
+            .doOnSuccess(response -> log.info("Cache limpiado manualmente para {}/{}", owner, repo))
+            .onErrorResume(error -> {
+                log.error("Error limpiando cache para {}/{}", owner, repo, error);
+                return Mono.just(ResponseEntity.internalServerError()
+                    .body("Error limpiando cache: " + error.getMessage()));
+            });
     }
 
     /**
-     * Exporta solo análisis técnico.
+     * Limpia todo el cache.
+     * 
+     * @return Respuesta de confirmación
      */
-    private Mono<Object> exportTechnicalOnly(String owner, String repo, Principal principal, Map<String, Object> exportData) {
-        return Mono.zip(
-            githubService.getRepository(owner, repo, principal),
-            githubService.getLanguages(owner, repo, principal)
-        ).map(tuple -> {
-            exportData.put("technicalAnalysis", Map.of(
-                "repository", tuple.getT1(),
-                "languages", tuple.getT2()
-            ));
-            return (Object) exportData;
-        });
+    @DeleteMapping("/all")
+    public Mono<ResponseEntity<String>> clearAllCache() {
+        return reactiveCacheService.clearAllCache()
+            .then(Mono.just(ResponseEntity.ok("Todo el cache ha sido limpiado")))
+            .doOnSuccess(response -> log.info("Todo el cache limpiado manualmente"))
+            .onErrorResume(error -> {
+                log.error("Error limpiando todo el cache", error);
+                return Mono.just(ResponseEntity.internalServerError()
+                    .body("Error limpiando cache: " + error.getMessage()));
+            });
     }
 
     /**
-     * Exporta análisis completo.
+     * Realiza warm-up del cache para el usuario autenticado.
+     * 
+     * @param principal Usuario autenticado
+     * @return Respuesta de confirmación
      */
-    private Mono<Object> exportCompleteAnalysis(String owner, String repo, Principal principal, Map<String, Object> exportData) {
-        return Mono.zip(
-            githubService.getRepository(owner, repo, principal),
-            commitCacheService.getCommits(owner, repo, principal).collectList(),
-            githubService.getPullRequests(owner, repo, principal).collectList(),
-            githubService.getIssues(owner, repo, principal).collectList(),
-            githubService.getLanguages(owner, repo, principal)
-        ).map(tuple -> {
-            exportData.put("repository", tuple.getT1());
-            exportData.put("commits", tuple.getT2());
-            exportData.put("pullRequests", tuple.getT3());
-            exportData.put("issues", tuple.getT4());
-            exportData.put("languages", tuple.getT5());
-            
-            // Estadísticas generales
-            exportData.put("statistics", Map.of(
-                "totalCommits", tuple.getT2().size(),
-                "totalPullRequests", tuple.getT3().size(),
-                "totalIssues", tuple.getT4().size(),
-                "totalLanguages", tuple.getT5().size()
-            ));
-            
-            return (Object) exportData;
-        });
+    @PostMapping("/warmup")
+    public Mono<ResponseEntity<String>> warmUpCache(@AuthenticationPrincipal Principal principal) {
+        if (principal == null) {
+            return Mono.just(ResponseEntity.status(401).body("Usuario no autenticado"));
+        }
+
+        return reactiveCacheService.warmUpCache(principal)
+            .then(Mono.just(ResponseEntity.ok("Cache warm-up completado para " + principal.getName())))
+            .doOnSuccess(response -> log.info("Cache warm-up completado para usuario: {}", principal.getName()))
+            .onErrorResume(error -> {
+                log.error("Error en warm-up del cache para usuario: {}", principal.getName(), error);
+                return Mono.just(ResponseEntity.internalServerError()
+                    .body("Error en warm-up: " + error.getMessage()));
+            });
+    }
+
+    /**
+     * Obtiene información de salud del cache.
+     * 
+     * @return Estado de salud del cache
+     */
+    @GetMapping("/health")
+    public Mono<ResponseEntity<CacheHealth>> getCacheHealth() {
+        return reactiveCacheService.getCacheStats()
+            .map(stats -> {
+                boolean healthy = stats.getHitRate() > 0.5 && stats.getValidEntries() > 0;
+                String status = healthy ? "HEALTHY" : "DEGRADED";
+                
+                CacheHealth health = CacheHealth.builder()
+                    .status(status)
+                    .hitRate(stats.getHitRate())
+                    .totalEntries(stats.getTotalEntries())
+                    .validEntries(stats.getValidEntries())
+                    .message(healthy ? "Cache funcionando correctamente" : "Cache necesita atención")
+                    .build();
+                
+                return ResponseEntity.ok(health);
+            })
+            .onErrorResume(error -> {
+                log.error("Error obteniendo salud del cache", error);
+                CacheHealth health = CacheHealth.builder()
+                    .status("UNHEALTHY")
+                    .hitRate(0.0)
+                    .totalEntries(0)
+                    .validEntries(0)
+                    .message("Error obteniendo estado del cache: " + error.getMessage())
+                    .build();
+                
+                return Mono.just(ResponseEntity.status(503).body(health));
+            });
+    }
+
+    /**
+     * Endpoint para streaming de estadísticas del cache en tiempo real.
+     * 
+     * @return Stream de estadísticas
+     */
+    @GetMapping(value = "/stats/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Mono<ResponseEntity<String>> streamCacheStats() {
+        return reactiveCacheService.getCacheStats()
+            .map(stats -> {
+                String event = String.format("data: {\"hitRate\":%.2f,\"totalEntries\":%d,\"validEntries\":%d}\n\n",
+                    stats.getHitRate(), stats.getTotalEntries(), stats.getValidEntries());
+                return ResponseEntity.ok(event);
+            })
+            .onErrorResume(error -> {
+                log.error("Error streaming estadísticas del cache", error);
+                return Mono.just(ResponseEntity.internalServerError().body(""));
+            });
+    }
+
+    /**
+     * Clase para representar el estado de salud del cache.
+     */
+    @lombok.Data
+    @lombok.Builder
+    @lombok.NoArgsConstructor
+    @lombok.AllArgsConstructor
+    public static class CacheHealth {
+        private String status;
+        private double hitRate;
+        private long totalEntries;
+        private long validEntries;
+        private String message;
     }
 } 

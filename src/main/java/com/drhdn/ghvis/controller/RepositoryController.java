@@ -4,7 +4,7 @@ import com.drhdn.ghvis.model.Commit;
 import com.drhdn.ghvis.model.PullRequest;
 import com.drhdn.ghvis.model.Issue;
 import com.drhdn.ghvis.service.GithubService;
-import com.drhdn.ghvis.service.CommitCacheService;
+import com.drhdn.ghvis.service.ReactiveCacheService;
 import com.drhdn.ghvis.service.OAuth2UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +31,7 @@ import java.util.List;
 public class RepositoryController {
 
     private final GithubService githubService;
-    private final CommitCacheService commitCacheService;
+    private final ReactiveCacheService reactiveCacheService;
     private final OAuth2UserService oAuth2UserService;
 
     /**
@@ -52,8 +52,8 @@ public class RepositoryController {
         
         log.info("📊 Obteniendo commits para: {}/{}", owner, repo);
         
-        // Usar servicio de caché que internamente maneja OAuth2
-        return commitCacheService.getCommits(owner, repo, principal)
+        // Usar servicio de cache reactivo que internamente maneja OAuth2
+        return reactiveCacheService.getCachedCommits(owner, repo, principal)
             .collectList()
             .doOnNext(commits -> log.info("✅ Commits obtenidos: {} commits para {}/{}", 
                 commits.size(), owner, repo))
@@ -70,7 +70,7 @@ public class RepositoryController {
         if (parts.length != 2) {
             return Mono.error(new IllegalArgumentException("Parámetro 'repo' inválido."));
         }
-        return githubService.getCommitDetail(parts[0], parts[1], sha, principal);
+        return reactiveCacheService.getCachedCommit(parts[0], parts[1], sha, principal);
     }
 
     /**
