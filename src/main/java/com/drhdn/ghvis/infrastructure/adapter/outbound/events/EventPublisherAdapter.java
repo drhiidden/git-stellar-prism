@@ -1,38 +1,88 @@
 package com.drhdn.ghvis.infrastructure.adapter.outbound.events;
 
-import com.drhdn.ghvis.domain.entity.Event;
-import lombok.Getter;
-import org.springframework.stereotype.Service;
+import com.drhdn.ghvis.application.handler.CommitRetrievalEventHandler;
+import com.drhdn.ghvis.application.handler.RepositoryAnalysisEventHandler;
+import com.drhdn.ghvis.domain.event.*;
+import com.drhdn.ghvis.domain.port.EventPublisher;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+import reactor.core.publisher.Mono;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Sinks;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+
+import java.util.List;
 
 /**
- * Adapter de infraestructura para publicación de eventos.
+ * Adapter de infraestructura para publicación de eventos de dominio.
  * 
- * Implementa el patrón Publisher para eventos de GitHub,
- * permitiendo la comunicación en tiempo real mediante SSE.
+ * Implementa el puerto EventPublisher, integrando con Event Handlers
+ * para procesar eventos de manera asíncrona y desacoplada.
  * 
  * @author GitStellarPrism Team
  * @version 1.0.0
  */
-@Service
-@ConditionalOnProperty(name = "app.realtime.enabled", havingValue = "true")
-public class EventPublisherAdapter {
-
-    private final Sinks.Many<Event> sink = Sinks.many().multicast().onBackpressureBuffer();
-
+@Component
+@RequiredArgsConstructor
+@Slf4j
+public class EventPublisherAdapter implements EventPublisher {
+    
+    private final CommitRetrievalEventHandler commitRetrievalEventHandler;
+    private final RepositoryAnalysisEventHandler repositoryAnalysisEventHandler;
+    
     /**
-     * Publica un nuevo evento para los suscriptores SSE.
+     * Publica un evento de dominio.
+     * 
+     * @param event Evento a publicar
+     * @param <T> Tipo del evento
+     * @return Mono completado cuando el evento se publica
      */
-    public void publish(Event event) {
-        sink.tryEmitNext(event);
+    @Override
+    public <T> Mono<Void> publish(T event) {
+        log.debug("📤 Publicando evento: {}", event.getClass().getSimpleName());
+        
+        return Mono.defer(() -> {
+            if (event instanceof CommitRetrievalRequestedEvent requestedEvent) {
+                return commitRetrievalEventHandler.handleCommitRetrievalRequested(requestedEvent);
+            } else if (event instanceof CommitRetrievalCompletedEvent completedEvent) {
+                return commitRetrievalEventHandler.handleCommitRetrievalCompleted(completedEvent);
+            } else if (event instanceof CommitRetrievalFailedEvent failedEvent) {
+                return commitRetrievalEventHandler.handleCommitRetrievalFailed(failedEvent);
+            } else if (event instanceof RepositoryAnalysisRequestedEvent analysisRequestedEvent) {
+                return repositoryAnalysisEventHandler.handleRepositoryAnalysisRequested(analysisRequestedEvent);
+            } else if (event instanceof RepositoryAnalysisCompletedEvent analysisCompletedEvent) {
+                return repositoryAnalysisEventHandler.handleRepositoryAnalysisCompleted(analysisCompletedEvent);
+            } else if (event instanceof IssueRetrievalRequestedEvent issueRequestedEvent) {
+                return repositoryAnalysisEventHandler.handleIssueRetrievalRequested(issueRequestedEvent);
+            } else if (event instanceof PullRequestRetrievalRequestedEvent prRequestedEvent) {
+                return repositoryAnalysisEventHandler.handlePullRequestRetrievalRequested(prRequestedEvent);
+            } else if (event instanceof TechnicalSummaryGeneratedEvent technicalSummaryEvent) {
+                return repositoryAnalysisEventHandler.handleTechnicalSummaryGenerated(technicalSummaryEvent);
+            } else {
+                log.warn("⚠️ Evento no manejado: {}", event.getClass().getSimpleName());
+                return Mono.empty();
+            }
+        })
+        .doOnSuccess(v -> log.debug("✅ Evento publicado exitosamente: {}", event.getClass().getSimpleName()))
+        .doOnError(error -> log.error("❌ Error publicando evento {}: {}", 
+            event.getClass().getSimpleName(), error.getMessage()));
     }
-
+    
     /**
-     * Devuelve un Flux que emite los eventos publicados.
+     * Publica múltiples eventos de dominio.
+     * 
+     * @param events Eventos a publicar
+     * @param <T> Tipo de los eventos
+     * @return Mono completado cuando todos los eventos se publican
      */
-    public Flux<Event> flux() {
-        return sink.asFlux();
+    @Override
+    public <T> Mono<Void> publishAll(List<T> events) {
+        log.debug("📤 Publicando {} eventos", events.size());
+        
+        return Mono.fromCallable(() -> events)
+            .flatMapMany(Flux::fromIterable)
+            .flatMap(this::publish)
+            .then()
+            .doOnSuccess(v -> log.debug("✅ Todos los eventos publicados exitosamente"))
+            .doOnError(error -> log.error("❌ Error publicando eventos: {}", error.getMessage()));
     }
 } 

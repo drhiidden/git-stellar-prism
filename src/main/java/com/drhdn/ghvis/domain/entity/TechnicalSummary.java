@@ -42,6 +42,36 @@ public class TechnicalSummary {
     private List<String> mainTechnologies;
     
     /**
+     * Lenguajes de programación detectados
+     */
+    private List<String> languages;
+    
+    /**
+     * Tecnologías detectadas en el proyecto
+     */
+    private List<String> technologies;
+    
+    /**
+     * Número total de archivos
+     */
+    private Integer totalFiles;
+    
+    /**
+     * Tamaño total del repositorio en bytes
+     */
+    private Long totalSize;
+    
+    /**
+     * Lenguaje principal del proyecto
+     */
+    private String primaryLanguage;
+    
+    /**
+     * Puntuación de complejidad del proyecto (0-10)
+     */
+    private Double complexityScore;
+    
+    /**
      * Roles y responsabilidades del desarrollador
      */
     private String rolesAndResponsibilities;
