@@ -5,7 +5,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableScheduling // Para habilitar @Scheduled en UserRepositoryCacheService
+@EnableScheduling // Para habilitar @Scheduled en servicios de cache
 public class GhvisApplication {
 
     public static void main(String[] args) {
