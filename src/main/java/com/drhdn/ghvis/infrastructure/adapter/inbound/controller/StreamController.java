@@ -1,7 +1,7 @@
 package com.drhdn.ghvis.infrastructure.adapter.inbound.controller;
 
-import com.drhdn.ghvis.domain.event.*;
-import com.drhdn.ghvis.domain.port.EventPublisher;
+
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -33,7 +33,7 @@ import java.util.concurrent.atomic.LongAdder;
 @Slf4j
 public class StreamController {
 
-    private final EventPublisher eventPublisher;
+    // private final EventPublisher eventPublisher; // Reserved for real-time event publishing
     
     // Sink para eventos en tiempo real
     private final Sinks.Many<Map<String, Object>> eventSink = Sinks.many().multicast().onBackpressureBuffer();

@@ -11,10 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
@@ -41,6 +38,7 @@ import static org.mockito.Mockito.*;
  * @version 1.0.0
  */
 @ExtendWith(MockitoExtension.class)
+@SuppressWarnings({"unchecked", "rawtypes"}) // Mockito + Reactive generics warnings
 class GithubApiAdapterIntegrationTest {
 
     @Mock
@@ -240,7 +238,7 @@ class GithubApiAdapterIntegrationTest {
     @Test
     void validateReadOnlyOperation_WithInvalidOperation_ShouldThrowException() {
         // Given
-        String invalidOperation = "deleteRepository";
+        // Testing validateReadOnlyOperation indirectly through public method calls
 
         // When & Then - Accessing private method through public method
         StepVerifier.create(githubApiAdapter.getRepository("owner", "repo", principal))

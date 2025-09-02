@@ -3,8 +3,7 @@ package com.drhdn.ghvis.infrastructure.adapter.inbound.controller;
 import com.drhdn.ghvis.application.handler.GetUserRepositoriesQueryHandler;
 import com.drhdn.ghvis.application.query.GetUserInfoQuery;
 import com.drhdn.ghvis.application.handler.GetUserInfoQueryHandler;
-import com.drhdn.ghvis.domain.entity.Repository;
-import com.drhdn.ghvis.domain.entity.User;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;

@@ -4,8 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
-import org.springframework.security.oauth2.core.OAuth2Error;
+
+
 import org.springframework.web.reactive.function.client.ClientRequest;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
@@ -109,8 +109,8 @@ public class OAuth2ErrorConfig {
      * Crea una excepción OAuth2 personalizada.
      */
     private Mono<ClientResponse> createOAuth2Exception(String errorCode, String description) {
-        OAuth2Error error = new OAuth2Error(errorCode, description, null);
-        OAuth2AuthenticationException exception = new OAuth2AuthenticationException(error);
+        // OAuth2Error error = new OAuth2Error(errorCode, description, null); // Reserved for future use
+        // OAuth2AuthenticationException exception = new OAuth2AuthenticationException(error); // Reserved for future use
         
         return Mono.error(new WebClientResponseException(
             description, 

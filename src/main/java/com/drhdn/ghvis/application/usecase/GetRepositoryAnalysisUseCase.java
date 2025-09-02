@@ -5,14 +5,14 @@ import com.drhdn.ghvis.domain.entity.Issue;
 import com.drhdn.ghvis.domain.entity.PullRequest;
 import com.drhdn.ghvis.domain.entity.TechnicalSummary;
 import com.drhdn.ghvis.domain.event.*;
-import com.drhdn.ghvis.domain.port.CacheService;
-import com.drhdn.ghvis.domain.port.CircuitBreakerService;
+
+
 import com.drhdn.ghvis.domain.port.CommitRepository;
 import com.drhdn.ghvis.domain.port.EventPublisher;
 import com.drhdn.ghvis.domain.port.IssueRepository;
 import com.drhdn.ghvis.domain.port.PullRequestRepository;
-import com.drhdn.ghvis.domain.port.RateLimitService;
-import com.drhdn.ghvis.domain.port.RepositoryRepository;
+
+
 import com.drhdn.ghvis.domain.port.TechnicalSummaryRepository;
 import com.drhdn.ghvis.domain.service.CommitAnalysisService;
 import lombok.RequiredArgsConstructor;
@@ -43,11 +43,7 @@ public class GetRepositoryAnalysisUseCase {
     private final CommitRepository commitRepository;
     private final IssueRepository issueRepository;
     private final PullRequestRepository pullRequestRepository;
-    private final RepositoryRepository repositoryRepository;
     private final TechnicalSummaryRepository technicalSummaryRepository;
-    private final CacheService cacheService;
-    private final RateLimitService rateLimitService;
-    private final CircuitBreakerService circuitBreakerService;
     private final CommitAnalysisService commitAnalysisService;
     private final EventPublisher eventPublisher;
     

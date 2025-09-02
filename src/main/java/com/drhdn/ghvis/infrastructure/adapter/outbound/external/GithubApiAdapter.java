@@ -491,7 +491,11 @@ public class GithubApiAdapter {
                 .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {}) // Tipado explícito
-                .map(resp -> (List<Map<String, Object>>) resp.getOrDefault("tree", Collections.emptyList()))
+                .map(resp -> {
+                    @SuppressWarnings("unchecked") // GitHub API response casting
+                    List<Map<String, Object>> tree = (List<Map<String, Object>>) resp.getOrDefault("tree", Collections.emptyList());
+                    return tree;
+                })
                 .doOnSuccess(list -> log.info("✅ GitHub API: GET {} - Success ({} nodes)", url, list.size()))
                 .doOnError(error -> log.error("❌ GitHub API: GET {} - Error: {}", url, error.getMessage()));
     }

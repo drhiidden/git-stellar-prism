@@ -94,7 +94,7 @@ public class RepositoryAnalysisEventHandler {
     public Mono<Void> handleTechnicalSummaryGenerated(TechnicalSummaryGeneratedEvent event) {
         String status = event.isSuccessful() ? "✅" : "⚠️";
         String complexity = event.isComplexProject() ? "🧠" : "📝";
-        String multiLang = event.isMultiLanguage() ? "🌍" : "🔤";
+        // String multiLang = event.isMultiLanguage() ? "🌍" : "🔤"; // Reserved for future use
         String cache = event.isFromCache() ? "💾" : "🌐";
         
         log.info("{} Resumen técnico generado - Repo: {}, Tecnologías: {}, Lenguajes: {}, " +

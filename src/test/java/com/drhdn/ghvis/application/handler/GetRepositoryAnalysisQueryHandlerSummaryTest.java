@@ -25,6 +25,7 @@ import java.util.Map;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+@SuppressWarnings("unchecked") // Mock testing requires unchecked casts
 class GetRepositoryAnalysisQueryHandlerSummaryTest {
 
     @Mock private LanguageRepository languageRepository;

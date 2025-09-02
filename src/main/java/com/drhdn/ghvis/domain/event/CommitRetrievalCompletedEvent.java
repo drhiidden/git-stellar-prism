@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 import java.time.Instant;
-import java.util.List;
+
 
 /**
  * Evento de dominio que representa la finalización de una solicitud de commits.

@@ -267,6 +267,7 @@ public class Repository extends AbstractEventSourcedAggregate {
     }
     
     @Override
+    @SuppressWarnings("unchecked") // Event sourcing requires dynamic casting from generic event data
     public EventSourcedAggregate apply(DomainEvent event) {
         if (!belongsToAggregate(event)) {
             return this;

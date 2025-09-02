@@ -27,7 +27,7 @@ import java.util.Map;
 public class ResilienceController {
 
     private final GetRepositoryCommitsUseCase getRepositoryCommitsUseCase;
-    private final CircuitBreakerService circuitBreakerService;
+    // private final CircuitBreakerService circuitBreakerService; // Reserved for circuit breaker monitoring
 
     /**
      * Obtiene commits de un repositorio con resiliencia completa.

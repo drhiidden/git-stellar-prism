@@ -1,8 +1,7 @@
 package com.drhdn.ghvis.infrastructure.adapter.outbound.resilience;
 
 import com.drhdn.ghvis.domain.port.CircuitBreakerService;
-import com.drhdn.ghvis.domain.port.CircuitBreakerService.CircuitBreakerStats;
-import com.drhdn.ghvis.domain.port.CircuitBreakerService.CircuitBreakerState;
+
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;

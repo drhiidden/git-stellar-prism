@@ -16,13 +16,14 @@ import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
 import java.security.Principal;
-import java.time.Instant;
+
 import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+@SuppressWarnings("unchecked") // Mock testing requires unchecked casts
 class GetRepositoryAnalysisQueryHandlerStructureTest {
 
     @Mock private LanguageRepository languageRepository;

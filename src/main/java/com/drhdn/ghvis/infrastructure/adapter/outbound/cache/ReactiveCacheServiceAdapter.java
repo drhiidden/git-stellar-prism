@@ -51,6 +51,7 @@ public class ReactiveCacheServiceAdapter implements CacheService {
     }
     
     @Override
+    @SuppressWarnings("unchecked") // Generic cache storage requires unchecked cast
     public <T> Mono<T> getOrFetch(String key, Supplier<Mono<T>> fetchFunction, long ttlSeconds) {
         return Mono.defer(() -> {
             CacheEntry<T> entry = (CacheEntry<T>) cache.get(key);
@@ -120,8 +121,6 @@ public class ReactiveCacheServiceAdapter implements CacheService {
     @Override
     public Mono<Void> warmUp(String owner, String repo, Principal principal) {
         // Implementación de warm-up específica para repositorios
-        String cacheKey = buildCacheKey("warmup", owner, repo, principal.getName());
-        
         return Mono.fromRunnable(() -> {
             log.info("Cache warm-up iniciado para {}/{} (usuario: {})", owner, repo, principal.getName());
         })
@@ -133,10 +132,7 @@ public class ReactiveCacheServiceAdapter implements CacheService {
     /**
      * Construye una clave de cache consistente.
      */
-    private String buildCacheKey(String type, String... parts) {
-        return String.join(":", type, String.join(":", parts));
-    }
-    
+
     /**
      * Evicta las entradas más antiguas cuando se excede el límite.
      */
@@ -201,11 +197,11 @@ public class ReactiveCacheServiceAdapter implements CacheService {
         
         @Override
         public long getHitCount() { return hits; }
-        public void setHitCount(long hits) { this.hits = hits; }
+        // Setter removed - not used locally
         
         @Override
         public long getMissCount() { return misses; }
-        public void setMissCount(long misses) { this.misses = misses; }
+        // Setter removed - not used locally
         
         @Override
         public double getHitRate() {
@@ -215,11 +211,11 @@ public class ReactiveCacheServiceAdapter implements CacheService {
         
         @Override
         public long getEvictionCount() { return expiredEntries; }
-        public void setEvictionCount(long expiredEntries) { this.expiredEntries = expiredEntries; }
+        // Setter removed - not used locally
         
         @Override
         public long getSize() { return validEntries; }
-        public void setSize(long validEntries) { this.validEntries = validEntries; }
+        // Setter removed - not used locally
         
         @Override
         public long getMaxSize() { return 1000; } // Valor por defecto

@@ -26,6 +26,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+@SuppressWarnings("unchecked") // Mock testing requires unchecked casts
 class GetRepositoryTimelineQueryHandlerTest {
 
     @Mock

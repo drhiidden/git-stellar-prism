@@ -23,7 +23,6 @@ public class GithubApiResponseMapper {
      * @param map Mapa con datos del repositorio
      * @return Objeto Repository
      */
-    @SuppressWarnings("unchecked")
     public Repository mapToRepository(Map<String, Object> map) {
         return Repository.builder()
                 .id(getLong(map, "id"))
@@ -53,7 +52,6 @@ public class GithubApiResponseMapper {
      * @param map Mapa con datos del commit
      * @return Objeto Commit
      */
-    @SuppressWarnings("unchecked")
     public Commit mapToCommit(Map<String, Object> map) {
         Map<String, Object> commitMap = getNestedMap(map, "commit");
         Map<String, Object> authorMap = getNestedMap(commitMap, "author");
@@ -76,7 +74,6 @@ public class GithubApiResponseMapper {
      * @param map Mapa con datos detallados del commit
      * @return Objeto Commit
      */
-    @SuppressWarnings("unchecked")
     public Commit mapToDetailedCommit(Map<String, Object> map) {
         Commit commit = mapToCommit(map);
 
@@ -109,7 +106,6 @@ public class GithubApiResponseMapper {
      * @param map Mapa con datos del pull request
      * @return Objeto PullRequest
      */
-    @SuppressWarnings("unchecked")
     public PullRequest mapToPullRequest(Map<String, Object> map) {
         Map<String, Object> userMap = getNestedMap(map, "user");
         Map<String, Object> headMap = getNestedMap(map, "head");
@@ -138,7 +134,6 @@ public class GithubApiResponseMapper {
      * @param map Mapa con datos del issue
      * @return Objeto Issue
      */
-    @SuppressWarnings("unchecked")
     public Issue mapToIssue(Map<String, Object> map) {
         Map<String, Object> userMap = getNestedMap(map, "user");
 
@@ -187,7 +182,6 @@ public class GithubApiResponseMapper {
      * @param map Mapa con datos del readme
      * @return Objeto Readme
      */
-    @SuppressWarnings("unchecked")
     public Readme mapToReadme(Map<String, Object> map) {
         return Readme.builder()
                 .type(getString(map, "type"))
@@ -247,7 +241,6 @@ public class GithubApiResponseMapper {
         return value instanceof List ? (List<Map<String, Object>>) value : Collections.emptyList();
     }
 
-    @SuppressWarnings("unchecked")
     protected List<String> getStringList(Map<String, Object> map, String key) {
         if (map == null || !map.containsKey(key)) return Collections.emptyList();
         Object value = map.get(key);

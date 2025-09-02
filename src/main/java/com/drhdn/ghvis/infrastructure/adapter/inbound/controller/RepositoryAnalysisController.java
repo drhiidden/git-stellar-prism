@@ -1,6 +1,6 @@
 package com.drhdn.ghvis.infrastructure.adapter.inbound.controller;
 
-import com.drhdn.ghvis.application.handler.CreateRepositoryAnalysisCommandHandler;
+
 import com.drhdn.ghvis.application.handler.GetRepositoryAnalysisQueryHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ import java.util.Map;
 @Slf4j
 public class RepositoryAnalysisController {
 
-    private final CreateRepositoryAnalysisCommandHandler commandHandler;
+    // private final CreateRepositoryAnalysisCommandHandler commandHandler; // Reserved for future CQRS commands
     private final GetRepositoryAnalysisQueryHandler queryHandler;
 
     /**
