@@ -65,8 +65,16 @@ public class RepositoryController {
 
         return getRepositoryCommitsQueryHandler.handle(query)
             .map(ResponseEntity::ok)
-            .doOnSuccess(response -> log.info("✅ Commits obtenidos: {} commits para {}/{} (QueryId: {})", 
-                response.getBody().size(), owner, repo, query.getQueryId()))
+            .doOnSuccess(response -> {
+                var body = response.getBody();
+                if (body != null) {
+                    log.info("✅ Commits obtenidos: {} commits para {}/{} (QueryId: {})", 
+                        body.size(), owner, repo, query.getQueryId());
+                } else {
+                    log.warn("⚠️ Respuesta de commits vacía para {}/{} (QueryId: {})", 
+                        owner, repo, query.getQueryId());
+                }
+            })
             .doOnError(error -> log.error("❌ Error obteniendo commits para {}/{} (QueryId: {}): {}", 
                 owner, repo, query.getQueryId(), error.getMessage()))
             .onErrorResume(error -> Mono.just(ResponseEntity.internalServerError().build()));
@@ -176,8 +184,16 @@ public class RepositoryController {
         
         return getRepositoryTimelineQueryHandler.handle(query)
             .map(ResponseEntity::ok)
-            .doOnSuccess(response -> log.info("✅ Timeline obtenido: {} eventos para {}/{} (QueryId: {})", 
-                response.getBody().size(), owner, repo, query.getQueryId()))
+            .doOnSuccess(response -> {
+                var body = response.getBody();
+                if (body != null) {
+                    log.info("✅ Timeline obtenido: {} eventos para {}/{} (QueryId: {})", 
+                        body.size(), owner, repo, query.getQueryId());
+                } else {
+                    log.warn("⚠️ Respuesta de timeline vacía para {}/{} (QueryId: {})", 
+                        owner, repo, query.getQueryId());
+                }
+            })
             .doOnError(error -> log.error("❌ Error obteniendo timeline para {}/{} (QueryId: {}): {}", 
                 owner, repo, query.getQueryId(), error.getMessage()))
             .onErrorResume(error -> Mono.just(ResponseEntity.internalServerError().build()));

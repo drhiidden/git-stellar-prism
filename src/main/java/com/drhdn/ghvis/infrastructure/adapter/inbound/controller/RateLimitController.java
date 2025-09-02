@@ -1,12 +1,15 @@
 package com.drhdn.ghvis.infrastructure.adapter.inbound.controller;
 
 import com.drhdn.ghvis.domain.port.RateLimitService;
+import com.drhdn.ghvis.infrastructure.adapter.outbound.ratelimit.RateLimitServiceAdapter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
+
+import java.security.Principal;
 
 /**
  * Controlador para gestión del rate limiting.
@@ -24,6 +27,7 @@ import reactor.core.publisher.Mono;
 public class RateLimitController {
 
     private final RateLimitService rateLimitService;
+    private final RateLimitServiceAdapter rateLimitServiceAdapter;
 
     /**
      * Obtiene estadísticas de rate limiting.
@@ -126,17 +130,38 @@ public class RateLimitController {
     @GetMapping("/endpoint/{username}/{endpoint}")
     public Mono<ResponseEntity<EndpointRateLimitInfo>> getEndpointRateLimitInfo(
             @PathVariable String username,
-            @PathVariable String endpoint) {
+            @PathVariable String endpoint,
+            Principal principal) {
         
         return Mono.fromCallable(() -> {
-            // Esta información sería más detallada en una implementación real
-            EndpointRateLimitInfo info = EndpointRateLimitInfo.builder()
-                .username(username)
-                .endpoint(endpoint)
-                .isActive(true)
-                .lastUpdated(java.time.Instant.now())
-                .message("Información de rate limit para endpoint específico")
-                .build();
+            // Obtener información real de rate limit usando getResetTime()
+            RateLimitServiceAdapter.RateLimitInfo rateLimitInfo = 
+                rateLimitServiceAdapter.getRateLimitInfo(endpoint, principal);
+            
+            EndpointRateLimitInfo info;
+            if (rateLimitInfo != null) {
+                info = EndpointRateLimitInfo.builder()
+                    .username(username)
+                    .endpoint(endpoint)
+                    .isActive(!rateLimitInfo.isExpired(java.time.Instant.now()))
+                    .lastUpdated(java.time.Instant.now())
+                    .resetTime(java.time.Instant.ofEpochSecond(rateLimitInfo.getResetTime())) // ¡USO DE getResetTime()!
+                    .remaining(rateLimitInfo.getRemaining())
+                    .limit(rateLimitInfo.getLimit())
+                    .message(String.format("Rate limit: %d/%d, reset: %s", 
+                        rateLimitInfo.getRemaining(), 
+                        rateLimitInfo.getLimit(),
+                        java.time.Instant.ofEpochSecond(rateLimitInfo.getResetTime())))
+                    .build();
+            } else {
+                info = EndpointRateLimitInfo.builder()
+                    .username(username)
+                    .endpoint(endpoint)
+                    .isActive(false)
+                    .lastUpdated(java.time.Instant.now())
+                    .message("No hay información de rate limit para este endpoint")
+                    .build();
+            }
             
             return ResponseEntity.ok(info);
         })
@@ -173,6 +198,9 @@ public class RateLimitController {
         private String endpoint;
         private boolean isActive;
         private java.time.Instant lastUpdated;
+        private java.time.Instant resetTime; // Cuándo se resetean los límites
+        private int remaining; // Requests restantes
+        private int limit; // Límite total
         private String message;
     }
 } 
