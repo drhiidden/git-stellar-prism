@@ -16,6 +16,9 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Base64;
+import java.util.stream.Collectors;
+import com.drhdn.ghvis.domain.entity.TechnicalSummary;
 
 /**
  * Handler para procesar queries de análisis de repositorio.
@@ -26,6 +29,7 @@ import java.util.Map;
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("all") // Suprimir todas las advertencias temporalmente
 public class GetRepositoryAnalysisQueryHandler {
     
     private final LanguageRepository languageRepository;
@@ -188,28 +192,58 @@ public class GetRepositoryAnalysisQueryHandler {
                 .collectList()
                 .defaultIfEmpty(Collections.emptyList());
 
-        return Mono.zip(langMono, techMono)
+        // Simular obtención del README para análisis de IA
+        Mono<String> readmeMono = githubApiAdapter.getReadme(owner, repo, principal)
+            .map(readme -> new String(Base64.getDecoder().decode(readme.getContent())))
+            .defaultIfEmpty("No README disponible.")
+            .onErrorResume(e -> {
+                log.warn("No se pudo obtener README para {}/{}: {}", owner, repo, e.getMessage());
+                return Mono.just("No README disponible.");
+            });
+
+        return Mono.zip(langMono, techMono, readmeMono)
             .map(tuple -> {
                 Map<String, Long> langs = tuple.getT1();
                 List<Object> techs = tuple.getT2();
+                String readmeContent = tuple.getT3();
 
                 String mainLanguage = langs.entrySet().stream()
                         .max(Map.Entry.comparingByValue())
                         .map(Map.Entry::getKey)
                         .orElse("Desconocido");
 
-                Map<String, Object> summary = new HashMap<>();
-                summary.put("repositoryName", repo);
-                summary.put("repositoryOwner", owner);
-                summary.put("mainLanguage", mainLanguage);
-                summary.put("languageCount", langs.size());
-                summary.put("mainTechnologies", techs.stream().limit(5).toList());
-                summary.put("generatedAt", java.time.Instant.now().toString());
-                summary.put("projectPurpose", "Propósito no disponible");
-                summary.put("rolesAndResponsibilities", "");
-                summary.put("achievements", Collections.emptyList());
-                summary.put("documentationQuality", "");
-                return summary;
+                // Simulación de análisis de IA para rellenar campos del resumen
+                String projectPurpose = extractPurposeFromReadme(readmeContent);
+                String rolesAndResponsibilities = ""; // Placeholder, la IA podría extraer esto
+                List<String> achievements = Collections.emptyList(); // Placeholder, la IA podría extraer esto
+                String documentationQuality = ""; // Placeholder, la IA podría evaluar esto
+
+                TechnicalSummary summary = new TechnicalSummary(
+                        null, // repositoryId: no disponible en este contexto
+                        repo,
+                        owner,
+                        projectPurpose,
+                        techs.stream().limit(5)
+                                .map(obj -> obj instanceof Map ? ((Map<?, ?>) obj).get("name").toString() : obj.toString())
+                                .collect(Collectors.toList()),
+                        langs.entrySet().stream().map(Map.Entry::getKey).collect(Collectors.toList()),
+                        techs.stream()
+                                .map(obj -> obj instanceof Map ? ((Map<?, ?>) obj).get("name").toString() : obj.toString())
+                                .collect(Collectors.toList()),
+                        null, // totalFiles: no disponible en este contexto
+                        null, // totalSize: no disponible en este contexto
+                        langs.size(), // languageCount
+                        mainLanguage,
+                        null, // complexityScore: no disponible en este contexto
+                        rolesAndResponsibilities,
+                        achievements,
+                        null, // codeSnippets: no disponible en este contexto
+                        documentationQuality,
+                        null, // preferredExportFormat: no disponible en este contexto
+                        java.time.Instant.now() // generatedAt
+                );
+
+                return summary.toMap(); // Convertir TechnicalSummary a Map antes de devolver
             });
     }
     
@@ -223,5 +257,25 @@ public class GetRepositoryAnalysisQueryHandler {
         String cachePattern = String.format("repo:%s:%s:analysis:*", owner, repo);
         cacheService.clear(cachePattern).subscribe();
         log.info("🧹 Cache limpiado para análisis de repositorio: {}/{}", owner, repo);
+    }
+
+    private String extractPurposeFromReadme(String readmeContent) {
+        // Simulación de extracción de propósito del README
+        if (readmeContent.toLowerCase().contains("propósito:")) {
+            int index = readmeContent.toLowerCase().indexOf("propósito:");
+            String purposeSection = readmeContent.substring(index);
+            int endIndex = purposeSection.indexOf('\n');
+            if (endIndex != -1) {
+                return purposeSection.substring(0, endIndex).replace("propósito:", "").trim();
+            }
+        } else if (readmeContent.toLowerCase().contains("objetivo:")) {
+             int index = readmeContent.toLowerCase().indexOf("objetivo:");
+            String purposeSection = readmeContent.substring(index);
+            int endIndex = purposeSection.indexOf('\n');
+            if (endIndex != -1) {
+                return purposeSection.substring(0, endIndex).replace("objetivo:", "").trim();
+            }
+        }
+        return "Propósito no disponible";
     }
 } 
