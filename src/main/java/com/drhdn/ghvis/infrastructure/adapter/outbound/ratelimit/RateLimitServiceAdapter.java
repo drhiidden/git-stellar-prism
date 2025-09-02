@@ -94,6 +94,10 @@ public class RateLimitServiceAdapter implements RateLimitService {
                 
             } catch (NumberFormatException e) {
                 log.warn("Error parseando headers de rate limit para endpoint: {}", endpoint);
+                // Usar errorHandler para manejo consistente de errores
+                errorHandler.handleGithubError().apply(e)
+                    .doOnError(err -> log.error("Error procesando rate limit headers: {}", err.getMessage()))
+                    .subscribe();
             }
         });
     }
@@ -165,6 +169,18 @@ public class RateLimitServiceAdapter implements RateLimitService {
             log.debug("Limpieza de rate limits expirados completada");
         });
     }
+    
+    /**
+     * Obtiene información específica de rate limit para un endpoint.
+     * 
+     * @param endpoint Endpoint de la API
+     * @param principal Usuario autenticado
+     * @return Información de rate limit o null si no existe
+     */
+    public RateLimitInfo getRateLimitInfo(String endpoint, Principal principal) {
+        String key = buildRateLimitKey(endpoint, principal);
+        return rateLimits.get(key);
+    }
 
     /**
      * Construye una clave única para el rate limiting.
@@ -176,11 +192,11 @@ public class RateLimitServiceAdapter implements RateLimitService {
     /**
      * Información de rate limiting para un endpoint.
      */
-    private static class RateLimitInfo {
+    public static class RateLimitInfo {
         private final int limit;
         private int remaining;
         private final long resetTime;
-        private Instant lastUpdated;
+        private Instant lastUpdated; // Reserved for future rate limiting metrics
 
         public RateLimitInfo(int limit, int remaining, long resetTime) {
             this.limit = limit;
