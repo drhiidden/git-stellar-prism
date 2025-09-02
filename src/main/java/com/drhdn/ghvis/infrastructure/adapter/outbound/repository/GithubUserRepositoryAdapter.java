@@ -110,7 +110,7 @@ public class GithubUserRepositoryAdapter implements UserRepository {
      */
     private static class UserStatsImpl implements UserRepository.UserStats {
         private final User user;
-        private final Principal principal;
+        private final Principal principal; // Reserved for user-specific statistics
 
         public UserStatsImpl(User user, Principal principal) {
             this.user = user;
@@ -186,10 +186,7 @@ public class GithubUserRepositoryAdapter implements UserRepository {
         return 0L;
     }
 
-    private Boolean getBoolean(Map<String, Object> map, String key) {
-        Object value = map.get(key);
-        return value instanceof Boolean ? (Boolean) value : false;
-    }
+    // getBoolean() method removed - using GithubApiResponseMapper.getBoolean() instead
 
     private Instant getInstant(Map<String, Object> map, String key) {
         String dateStr = getString(map, key);

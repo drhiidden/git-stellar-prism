@@ -14,7 +14,7 @@ import reactor.core.publisher.Mono;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.*;
-import java.util.stream.Collectors;
+
 
 /**
  * Adapter para detección de tecnologías usando GitHub API.
@@ -117,21 +117,28 @@ public class GithubTechnologyRepositoryAdapter implements TechnologyRepository {
     public Flux<Technology> detectBuildTools(String owner, String repo, Principal principal) {
         log.debug("🔍 Detectando herramientas de build para repositorio: {}/{}", owner, repo);
         
-        // Simular detección basada en archivos conocidos
-        List<Technology> buildTools = BUILD_TOOLS.entrySet().stream()
-            .map(entry -> Technology.builder()
-                .name(entry.getValue())
-                .category("Build Tool")
-                .language("Configuration")
-                .confidence(0.8) // Confianza fija por simplicidad
-                .repositoryOwner(owner)
-                .repositoryName(repo)
-                .detectedAt(Instant.now())
-                .build())
-            .collect(Collectors.toList());
-        
-        return Flux.fromIterable(buildTools)
-            .doOnComplete(() -> log.debug("✅ Herramientas de build detectadas para: {}/{}", owner, repo));
+        // ¡USO REAL DE githubApiAdapter para obtener archivos del repositorio!
+        return githubApiAdapter.getRepositoryTree(owner, repo, "HEAD", principal)
+            .flatMapMany(Flux::fromIterable) // Convertir List a Flux
+            .map(fileMap -> (String) fileMap.get("path"))
+            .filter(path -> path != null)
+            .flatMap(path -> {
+                for (Map.Entry<String, String> entry : BUILD_TOOLS.entrySet()) {
+                    if (path.endsWith(entry.getKey())) {
+                        return Mono.just(Technology.builder()
+                            .name(entry.getValue())
+                            .category("Build Tool")
+                            .language("Configuration")
+                            .confidence(0.9) // Alta confianza - archivo encontrado
+                            .repositoryOwner(owner)
+                            .repositoryName(repo)
+                            .detectedAt(Instant.now())
+                            .build());
+                    }
+                }
+                return Mono.empty();
+            })
+            .doOnComplete(() -> log.debug("✅ Herramientas de build detectadas para: {}/{} usando GitHub API", owner, repo));
     }
 
     @Override
