@@ -264,14 +264,21 @@ class DashboardComponent extends BaseComponent {
             return '<span class="text-muted">Cargando tecnologías...</span>';
         }
 
-        // Convertir a array y ordenar por frecuencia
+        const showAllTechs = this.state.showAllTechnologies || false;
+        const showByCategory = this.state.showTechByCategory || false;
+        
+        // Si tenemos detalles de tecnologías (del detector inteligente)
+        if (this.state.technologyDetails && this.state.technologyDetails.length > 0) {
+            return this.renderHierarchicalTechFilters(selectedTech, showAllTechs, showByCategory);
+        }
+
+        // Fallback: renderizado tradicional
         const techArray = Array.from(technologies).map(tech => {
             const count = this.countRepositoriesWithTech(tech);
             return { tech, count };
         }).sort((a, b) => b.count - a.count);
 
-        const showAllTechs = this.state.showAllTechnologies || false;
-        const maxVisible = 12; // Mostrar solo las 12 más populares por defecto
+        const maxVisible = 12;
         const visibleTechs = showAllTechs ? techArray : techArray.slice(0, maxVisible);
         const hiddenCount = techArray.length - maxVisible;
 
@@ -298,6 +305,94 @@ class DashboardComponent extends BaseComponent {
         ` : '';
 
         return allButton + techButtons + (hiddenCount > 0 ? toggleButton : '');
+    }
+    
+    renderHierarchicalTechFilters(selectedTech, showAllTechs, showByCategory) {
+        const { technologyDetails, repositories } = this.state;
+        
+        // Botón "Todas"
+        let html = `
+            <button class="btn tech-pill ${!selectedTech ? 'active btn-primary' : 'btn-outline-primary'}" 
+                    data-tech="">
+                <i class="fas fa-globe me-1"></i>
+                Todas (${repositories.length})
+            </button>
+        `;
+        
+        // Botón para alternar vista jerárquica/plana
+        html += `
+            <button class="btn btn-outline-secondary tech-pill" id="toggle-category-view" title="Alternar vista por categorías">
+                <i class="fas fa-${showByCategory ? 'list' : 'layer-group'} me-1"></i>
+                ${showByCategory ? 'Vista Plana' : 'Por Categoría'}
+            </button>
+        `;
+        
+        if (showByCategory) {
+            // Vista jerárquica por categorías
+            html += this.renderCategoryView(technologyDetails, selectedTech, showAllTechs);
+        } else {
+            // Vista plana (las más populares)
+            const maxVisible = 12;
+            const visibleTechs = showAllTechs ? technologyDetails : technologyDetails.slice(0, maxVisible);
+            const hiddenCount = technologyDetails.length - maxVisible;
+            
+            html += visibleTechs.map(tech => `
+                <button class="btn tech-pill ${selectedTech === tech.name ? 'active btn-primary' : 'btn-outline-primary'}" 
+                        data-tech="${tech.name}"
+                        title="${tech.category} • Confianza: ${Math.round(tech.confidence * 100)}%">
+                    ${tech.icon} ${tech.name} (${tech.count})
+                </button>
+            `).join('');
+            
+            if (hiddenCount > 0) {
+                html += `
+                    <button class="btn btn-outline-secondary tech-pill" id="toggle-technologies">
+                        <i class="fas fa-${showAllTechs ? 'chevron-up' : 'chevron-down'} me-1"></i>
+                        ${showAllTechs ? `Ver menos` : `Ver ${hiddenCount} más`}
+                    </button>
+                `;
+            }
+        }
+        
+        return html;
+    }
+    
+    renderCategoryView(technologyDetails, selectedTech, showAllTechs) {
+        // Agrupar por categoría
+        const grouped = window.TechnologyDetector.groupByCategory(technologyDetails);
+        
+        let html = '<div class="w-100"></div>'; // Break line
+        
+        // Ordenar categorías por prioridad
+        const sortedCategories = Object.entries(grouped).sort((a, b) => a[1].priority - b[1].priority);
+        
+        sortedCategories.forEach(([categoryName, categoryData]) => {
+            const maxPerCategory = showAllTechs ? 999 : 5;
+            const visibleTechs = categoryData.technologies.slice(0, maxPerCategory);
+            const hiddenInCategory = categoryData.technologies.length - maxPerCategory;
+            
+            html += `
+                <div class="tech-category-group w-100 mb-2">
+                    <small class="text-muted fw-bold d-block mb-1">
+                        ${categoryData.icon} ${categoryName} (${categoryData.technologies.length})
+                    </small>
+                    <div class="d-flex flex-wrap gap-1">
+                        ${visibleTechs.map(tech => `
+                            <button class="btn btn-sm tech-pill ${selectedTech === tech.name ? 'active btn-primary' : 'btn-outline-primary'}" 
+                                    data-tech="${tech.name}"
+                                    title="${tech.category} • ${tech.confidence ? Math.round(tech.confidence * 100) + '%' : ''}">
+                                ${tech.icon} ${tech.name} (${tech.count})
+                            </button>
+                        `).join('')}
+                        ${hiddenInCategory > 0 ? `
+                            <small class="text-muted align-self-center">+${hiddenInCategory} más</small>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        
+        return html;
     }
 
     renderActiveFiltersInfo() {
@@ -561,6 +656,12 @@ class DashboardComponent extends BaseComponent {
                 this.setState({ showAllTechnologies: !this.state.showAllTechnologies });
                 this.render();
             }
+            
+            // Toggle category view
+            if (e.target.closest('#toggle-category-view')) {
+                this.setState({ showTechByCategory: !this.state.showTechByCategory });
+                this.render();
+            }
         });
 
         // Búsqueda en tiempo real
@@ -680,29 +781,41 @@ class DashboardComponent extends BaseComponent {
 
     updateTechnologies() {
         const { repositories } = this.state;
-        const technologies = new Set();
-
-        repositories.forEach(repo => {
-            // Incluir lenguajes detectados automáticamente
-            const languages = repo.languages || repo.languageDistribution || {};
-            Object.keys(languages).forEach(lang => {
-                if (lang && lang.trim()) {
-                    technologies.add(lang);
-                }
+        
+        // Usar el detector inteligente de tecnologías
+        if (window.TechnologyDetector) {
+            const stats = window.TechnologyDetector.getStatistics(repositories);
+            
+            // Crear Set con todas las tecnologías detectadas (para compatibilidad)
+            const technologies = new Set(stats.technologies.map(t => t.name));
+            
+            // Guardar también el detalle completo para uso avanzado
+            this.setState({ 
+                technologies,
+                technologyDetails: stats.technologies,
+                technologyCategories: stats.categories,
+                filteredRepositories: repositories 
+            });
+        } else {
+            // Fallback al método anterior si el detector no está cargado
+            const technologies = new Set();
+            repositories.forEach(repo => {
+                const languages = repo.languages || repo.languageDistribution || {};
+                Object.keys(languages).forEach(lang => {
+                    if (lang && lang.trim()) technologies.add(lang);
+                });
+                
+                const topics = repo.topics || [];
+                topics.forEach(topic => {
+                    if (topic && topic.trim()) {
+                        const formattedTopic = topic.charAt(0).toUpperCase() + topic.slice(1).toLowerCase();
+                        technologies.add(formattedTopic);
+                    }
+                });
             });
             
-            // Incluir topics/etiquetas del repositorio
-            const topics = repo.topics || [];
-            topics.forEach(topic => {
-                if (topic && topic.trim()) {
-                    // Capitalizar primera letra para consistencia visual
-                    const formattedTopic = topic.charAt(0).toUpperCase() + topic.slice(1).toLowerCase();
-                    technologies.add(formattedTopic);
-                }
-            });
-        });
-
-        this.setState({ technologies, filteredRepositories: repositories });
+            this.setState({ technologies, filteredRepositories: repositories });
+        }
     }
 
     countRepositoriesWithTech(tech) {

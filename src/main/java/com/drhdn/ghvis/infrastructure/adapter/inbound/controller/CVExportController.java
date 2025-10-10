@@ -1,5 +1,8 @@
 package com.drhdn.ghvis.infrastructure.adapter.inbound.controller;
 
+import com.drhdn.ghvis.application.service.CVService;
+import com.drhdn.ghvis.application.service.RepositoryAnalyzer;
+import com.drhdn.ghvis.domain.entity.TechnicalCV;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -15,8 +18,13 @@ import java.util.Map;
  * Controlador para exportación de CV y resumen técnico consolidado.
  * Genera formatos útiles para portfolio profesional basado en análisis de GitHub.
  * 
+ * ESTRATEGIA EFICIENTE:
+ * - 1 request a GitHub para obtener repos (ya cacheado)
+ * - 0 requests adicionales para generar CV
+ * - Procesamiento en frontend con CVGenerator.js
+ * 
  * @author GitStellarPrism Team
- * @version 1.0.0
+ * @version 2.0.0
  */
 @RestController
 @RequestMapping("/api/cv")
@@ -24,10 +32,43 @@ import java.util.Map;
 @Slf4j
 public class CVExportController {
 
-    // TODO: Inyectar servicios necesarios cuando se implementen
-    // private final TechnicalSummaryService technicalSummaryService;
-    // private final CVExportService cvExportService;
+    private final CVService cvService;
+    private final RepositoryAnalyzer repositoryAnalyzer;
+    private final com.drhdn.ghvis.domain.port.RepositoryRepository repositoryRepository;
 
+    /**
+     * Genera CV técnico completo del usuario autenticado.
+     * 
+     * EFICIENCIA:
+     * - Usa datos ya cacheados (0 requests a GitHub)
+     * - Procesamiento local
+     * - Resultado cacheado por 24h
+     * 
+     * @param principal Usuario autenticado
+     * @return CV técnico en formato JSON
+     */
+    @GetMapping(value = "/generate", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Mono<ResponseEntity<TechnicalCV>> generateCV(Principal principal) {
+        if (principal == null) {
+            return Mono.just(ResponseEntity.status(401).build());
+        }
+
+        String username = principal.getName();
+        log.info("📄 Solicitud de generación de CV para: {}", username);
+
+        return cvService.generateCV(username, principal)
+            .map(cv -> {
+                log.info("✅ CV generado exitosamente para: {}", username);
+                return ResponseEntity.ok()
+                    .header("X-Generated-At", cv.getMetadata().getGeneratedAt().toString())
+                    .body(cv);
+            })
+            .doOnError(error -> log.error("❌ Error generando CV para {}: {}", username, error.getMessage()))
+            .onErrorResume(error -> Mono.just(
+                ResponseEntity.status(500).build()
+            ));
+    }
+    
     /**
      * Obtiene resumen técnico consolidado del usuario autenticado.
      * Analiza TODOS los repositorios (públicos + privados) y genera estadísticas.
@@ -45,25 +86,22 @@ public class CVExportController {
         String username = principal.getName();
         log.info("📊 Generando resumen técnico consolidado para usuario: {}", username);
 
-        // TODO: Implementar lógica real
-        // return technicalSummaryService.generateConsolidatedSummary(username, principal)
-        //     .map(ResponseEntity::ok)
-        //     .doOnSuccess(response -> log.info("✅ Resumen técnico generado para: {}", username))
-        //     .onErrorResume(error -> {
-        //         log.error("❌ Error generando resumen técnico: {}", error.getMessage());
-        //         return Mono.just(ResponseEntity.internalServerError()
-        //             .body(Map.of("error", "Error generando resumen", "message", error.getMessage())));
-        //     });
-
-        // Respuesta de ejemplo para pruebas
-        Map<String, Object> mockSummary = Map.of(
-            "username", username,
-            "status", "MOCK_DATA - Implementación pendiente",
-            "message", "Este endpoint está listo para implementación",
-            "nextSteps", "Implementar TechnicalSummaryService con análisis real de repos"
-        );
-
-        return Mono.just(ResponseEntity.ok(mockSummary));
+        // Usar CV Service para generar resumen
+        return cvService.generateCV(username, principal)
+            .map(cv -> {
+                Map<String, Object> summary = Map.of(
+                    "metadata", cv.getMetadata(),
+                    "header", cv.getHeader(),
+                    "summary", cv.getSummary()
+                );
+                return ResponseEntity.ok(summary);
+            })
+            .doOnSuccess(response -> log.info("✅ Resumen técnico generado para: {}", username))
+            .onErrorResume(error -> {
+                log.error("❌ Error generando resumen técnico: {}", error.getMessage());
+                return Mono.just(ResponseEntity.internalServerError()
+                    .body(Map.of("error", "Error generando resumen", "message", error.getMessage())));
+            });
     }
 
     /**
@@ -82,45 +120,152 @@ public class CVExportController {
         String username = principal.getName();
         log.info("📄 Exportando CV a Markdown para usuario: {}", username);
 
-        // TODO: Implementar lógica real
-        // return cvExportService.exportToMarkdown(username, principal)
-        //     .map(markdown -> ResponseEntity.ok()
-        //         .header(HttpHeaders.CONTENT_DISPOSITION, 
-        //             "attachment; filename=\"" + username + "_cv_tecnico.md\"")
-        //         .body(markdown))
-        //     .doOnSuccess(response -> log.info("✅ CV exportado a Markdown para: {}", username))
-        //     .onErrorResume(error -> {
-        //         log.error("❌ Error exportando CV a Markdown: {}", error.getMessage());
-        //         return Mono.just(ResponseEntity.internalServerError()
-        //             .body("# Error\n" + error.getMessage()));
-        //     });
-
-        // Respuesta de ejemplo para pruebas
-        String mockMarkdown = String.format("""
-            # %s - Perfil Técnico
+        return Mono.zip(
+            cvService.generateCV(username, principal),
+            repositoryRepository.findByUser(principal).collectList()
+        )
+        .map(tuple -> {
+            TechnicalCV cv = tuple.getT1();
+            var repos = tuple.getT2();
             
-            > ⚠️ MOCK DATA - Implementación pendiente
+            // Generar metadata técnica
+            var techMetadata = repositoryAnalyzer.generateTechnicalMetadata(repos);
             
-            ## 🎯 Stack Tecnológico Principal
+            String markdown = buildMarkdownCVWithMetadata(cv, techMetadata);
             
-            Este endpoint generará automáticamente:
-            - Lenguajes y porcentajes de uso
-            - Frameworks y tecnologías
-            - Proyectos destacados
-            - Timeline de actividad
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, 
+                    "attachment; filename=\"cv-" + cv.getHeader().getUsername() + ".md\"")
+                .body(markdown);
+        })
+        .doOnSuccess(response -> log.info("✅ CV exportado a Markdown para: {}", username))
+        .onErrorResume(error -> {
+            log.error("❌ Error exportando CV a Markdown: {}", error.getMessage());
+            return Mono.just(ResponseEntity.internalServerError()
+                .body("# Error\n" + error.getMessage()));
+        });
+    }
+    
+    /**
+     * Construye el CV en formato Markdown con metadata técnica
+     */
+    private String buildMarkdownCVWithMetadata(TechnicalCV cv, RepositoryAnalyzer.TechnicalMetadata techMetadata) {
+        StringBuilder md = new StringBuilder();
+        
+        // Header
+        md.append("# ").append(cv.getHeader().getName() != null ? cv.getHeader().getName() : cv.getHeader().getUsername())
+          .append("\n\n");
+        
+        if (cv.getHeader().getBio() != null && !cv.getHeader().getBio().isEmpty()) {
+            md.append(cv.getHeader().getBio()).append("\n\n");
+        }
+        
+        // Contact info
+        md.append("## 📧 Contacto\n\n");
+        if (cv.getHeader().getLocation() != null) {
+            md.append("- 📍 **Ubicación**: ").append(cv.getHeader().getLocation()).append("\n");
+        }
+        if (cv.getHeader().getEmail() != null) {
+            md.append("- 📧 **Email**: ").append(cv.getHeader().getEmail()).append("\n");
+        }
+        if (cv.getHeader().getGithub() != null) {
+            md.append("- 💻 **GitHub**: [").append(cv.getHeader().getUsername()).append("](")
+              .append(cv.getHeader().getGithub()).append(")\n");
+        }
+        if (cv.getHeader().getFollowers() != null) {
+            md.append("- 👥 **Seguidores**: ").append(cv.getHeader().getFollowers()).append("\n");
+        }
+        md.append("\n");
+        
+        // Summary
+        if (cv.getSummary() != null) {
+            md.append("## 💼 Resumen Profesional\n\n");
+            md.append("- **Proyectos totales**: ").append(cv.getSummary().getTotalProjects()).append("\n");
+            md.append("- **Proyectos públicos**: ").append(cv.getSummary().getPublicProjects()).append("\n");
             
-            ## 🚀 Próximos pasos
-            
-            1. Implementar CVExportService
-            2. Analizar todos los repositorios del usuario
-            3. Generar estadísticas consolidadas
-            4. Formatear en Markdown profesional
-            """, username);
-
-        return Mono.just(ResponseEntity.ok()
-            .header(HttpHeaders.CONTENT_DISPOSITION, 
-                "attachment; filename=\"" + username + "_cv_tecnico.md\"")
-            .body(mockMarkdown));
+            if (cv.getSummary().getPrimaryTechnologies() != null && !cv.getSummary().getPrimaryTechnologies().isEmpty()) {
+                md.append("- **Tecnologías principales**: ").append(String.join(", ", cv.getSummary().getPrimaryTechnologies())).append("\n");
+            }
+            md.append("\n");
+        }
+        
+        // Lenguajes de Programación
+        if (!techMetadata.languages().isEmpty()) {
+            md.append("## 💻 Lenguajes de Programación\n\n");
+            techMetadata.languages().entrySet().stream()
+                .sorted(Map.Entry.<String, RepositoryAnalyzer.LanguageStats>comparingByValue(
+                    java.util.Comparator.comparing(RepositoryAnalyzer.LanguageStats::getProjectCount).reversed()
+                ))
+                .forEach(entry -> {
+                    md.append("- **").append(entry.getKey()).append("** - ")
+                      .append(entry.getValue().getProjectCount()).append(" proyecto(s)\n");
+                });
+            md.append("\n");
+        }
+        
+        // Frameworks y Librerías
+        if (!techMetadata.frameworks().isEmpty()) {
+            md.append("## 🚀 Frameworks & Librerías\n\n");
+            techMetadata.frameworks().entrySet().stream()
+                .sorted(Map.Entry.<String, RepositoryAnalyzer.FrameworkStats>comparingByValue(
+                    java.util.Comparator.comparing(RepositoryAnalyzer.FrameworkStats::getProjectCount).reversed()
+                ))
+                .forEach(entry -> {
+                    md.append("- **").append(entry.getKey()).append("** - ")
+                      .append(entry.getValue().getProjectCount()).append(" proyecto(s)\n");
+                });
+            md.append("\n");
+        }
+        
+        // CI/CD Tools
+        if (!techMetadata.cicdTools().isEmpty()) {
+            md.append("## ⚙️ CI/CD & DevOps\n\n");
+            techMetadata.cicdTools().stream()
+                .sorted()
+                .forEach(tool -> md.append("- ").append(tool).append("\n"));
+            md.append("\n");
+        }
+        
+        // Proyectos Open Source
+        if (!techMetadata.openSourceProjects().isEmpty()) {
+            md.append("## 🌟 Proyectos Open Source\n\n");
+            techMetadata.openSourceProjects().stream()
+                .limit(10)
+                .forEach(project -> {
+                    md.append("### ").append(project.name()).append("\n\n");
+                    if (project.description() != null && !project.description().isBlank()) {
+                        md.append(project.description()).append("\n\n");
+                    }
+                    md.append("- ⭐ **").append(project.stars()).append(" stars**");
+                    if (project.forks() > 0) {
+                        md.append(" | 🔱 **").append(project.forks()).append(" forks**");
+                    }
+                    md.append("\n");
+                    md.append("- 🔗 [Ver proyecto](").append(project.url()).append(")\n");
+                    if (project.topics() != null && !project.topics().isEmpty()) {
+                        md.append("- 🏷️ Tags: ").append(String.join(", ", project.topics())).append("\n");
+                    }
+                    md.append("\n");
+                });
+        }
+        
+        // Metadata
+        if (cv.getMetadata() != null) {
+            md.append("## 📊 Estadísticas GitHub\n\n");
+            md.append("- **Total de repositorios**: ").append(cv.getMetadata().getTotalRepositories()).append("\n");
+            md.append("- **Perfil**: [").append(cv.getMetadata().getGithubProfile()).append("](")
+              .append(cv.getMetadata().getGithubProfile()).append(")\n");
+            md.append("\n");
+        }
+        
+        // Footer
+        md.append("---\n\n");
+        md.append("*CV generado por [GitStellarPrism](").append(cv.getMetadata().getSource()).append(") ");
+        md.append("el ").append(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")
+                .withZone(java.time.ZoneId.systemDefault())
+                .format(cv.getMetadata().getGeneratedAt())).append("*\n");
+        
+        return md.toString();
     }
 
     /**

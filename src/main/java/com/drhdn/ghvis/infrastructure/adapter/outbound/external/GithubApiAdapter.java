@@ -549,7 +549,7 @@ public class GithubApiAdapter {
      */
     public Flux<Repository> getUserRepositories(Principal principal) {
         validateReadOnlyOperation("getUserRepositories"); // 🔒 Salvaguarda de seguridad
-        String url = "/user/repos?visibility=all&sort=updated&per_page=100";
+        String url = "/user/repos?visibility=all&sort=updated&per_page=50";
         log.info("🔍 GitHub API: GET {} (user repositories)", url);
         
         return githubWebClient.get()
@@ -557,7 +557,7 @@ public class GithubApiAdapter {
                         .path("/user/repos")
                         .queryParam("visibility", "all")
                         .queryParam("sort", "updated")
-                        .queryParam("per_page", "100")
+                        .queryParam("per_page", "50")
                         .build())
                 .attributes(clientRegistrationId("github"))
                 .retrieve()

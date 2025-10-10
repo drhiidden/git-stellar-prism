@@ -8,6 +8,9 @@ class NotificationComponent extends BaseComponent {
         super(selector, options);
         this.notifications = [];
         this.maxNotifications = 5;
+        this.pendingBatch = [];         // Cola de notificaciones pendientes de agrupar
+        this.batchTimer = null;         // Timer para procesar batch
+        this.batchCounts = new Map();   // Contador de notificaciones por tipo
     }
 
     getDefaultOptions() {
@@ -16,7 +19,11 @@ class NotificationComponent extends BaseComponent {
             autoHide: true,
             defaultDelay: 5000,
             enableSound: false,
-            enableProgress: true
+            enableProgress: true,
+            enableBatching: true,       // Activar agrupación de notificaciones
+            batchDelay: 2000,           // Tiempo de espera para agrupar (ms)
+            batchThreshold: 3,          // Mínimo de notificaciones para agrupar
+            maxBatchSize: 50            // Máximo de notificaciones en un batch
         };
     }
 
@@ -80,6 +87,126 @@ class NotificationComponent extends BaseComponent {
 
     // Métodos públicos para mostrar diferentes tipos de notificaciones
     show(message, type = 'info', options = {}) {
+        const { enableBatching, batchThreshold } = this.options;
+        
+        // Si el batching está habilitado y no es una notificación de error/crítica
+        if (enableBatching && type !== 'error' && !options.forceDirect) {
+            return this.addToBatch(message, type, options);
+        }
+        
+        // Mostrar directamente si es error o forceDirect
+        return this.showDirect(message, type, options);
+    }
+    
+    addToBatch(message, type, options) {
+        const id = this.generateId();
+        const notification = { id, message, type, timestamp: new Date(), options: { ...this.options, ...options } };
+        
+        this.pendingBatch.push(notification);
+        
+        // Incrementar contador por tipo
+        const key = `${type}:${this.getBatchCategory(message)}`;
+        this.batchCounts.set(key, (this.batchCounts.get(key) || 0) + 1);
+        
+        // Cancelar timer anterior y crear uno nuevo
+        if (this.batchTimer) clearTimeout(this.batchTimer);
+        
+        // Si alcanzamos el máximo, procesar inmediatamente
+        if (this.pendingBatch.length >= this.options.maxBatchSize) {
+            this.processBatch();
+        } else {
+            // Esperar un poco más para agrupar
+            this.batchTimer = setTimeout(() => this.processBatch(), this.options.batchDelay);
+        }
+        
+        return id;
+    }
+    
+    getBatchCategory(message) {
+        // Categorizar mensajes para agrupar mejor
+        if (!message || typeof message !== 'string') return 'general';
+        
+        const lowerMessage = message.toLowerCase();
+        if (lowerMessage.includes('repositorio')) return 'repository';
+        if (lowerMessage.includes('cargad') || lowerMessage.includes('obtenid')) return 'loading';
+        if (lowerMessage.includes('actualiz')) return 'update';
+        return 'general';
+    }
+    
+    processBatch() {
+        if (this.batchTimer) clearTimeout(this.batchTimer);
+        this.batchTimer = null;
+        
+        if (this.pendingBatch.length === 0) return;
+        
+        const { batchThreshold } = this.options;
+        
+        // Si hay pocas notificaciones, mostrar individualmente
+        if (this.pendingBatch.length < batchThreshold) {
+            this.pendingBatch.forEach(notif => this.showDirect(notif.message, notif.type, notif.options));
+            this.pendingBatch = [];
+            this.batchCounts.clear();
+            return;
+        }
+        
+        // Agrupar por tipo y categoría
+        const grouped = this.groupBatchNotifications();
+        
+        // Mostrar resumen agrupado
+        grouped.forEach(group => {
+            const summaryMessage = this.createBatchSummary(group);
+            this.showDirect(summaryMessage, group.type, { 
+                autoHide: true, 
+                defaultDelay: 7000,
+                isBatch: true,
+                batchCount: group.count 
+            });
+        });
+        
+        this.pendingBatch = [];
+        this.batchCounts.clear();
+    }
+    
+    groupBatchNotifications() {
+        const groups = new Map();
+        
+        this.pendingBatch.forEach(notif => {
+            const category = this.getBatchCategory(notif.message);
+            const key = `${notif.type}:${category}`;
+            
+            if (!groups.has(key)) {
+                groups.set(key, {
+                    type: notif.type,
+                    category,
+                    count: 0,
+                    messages: []
+                });
+            }
+            
+            const group = groups.get(key);
+            group.count++;
+            if (group.messages.length < 3 && notif.message) { // Guardar solo las primeras 3 para referencia
+                group.messages.push(notif.message);
+            }
+        });
+        
+        return Array.from(groups.values());
+    }
+    
+    createBatchSummary(group) {
+        const { category, count } = group;
+        
+        const summaries = {
+            repository: `✅ ${count} repositorios procesados exitosamente`,
+            loading: `📦 ${count} elementos cargados`,
+            update: `🔄 ${count} actualizaciones completadas`,
+            general: `✓ ${count} operaciones completadas`
+        };
+        
+        return summaries[category] || summaries.general;
+    }
+    
+    showDirect(message, type = 'info', options = {}) {
         const id = this.generateId();
         const notification = {
             id,

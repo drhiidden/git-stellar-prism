@@ -24,6 +24,15 @@ public class GithubApiResponseMapper {
      * @return Objeto Repository
      */
     public Repository mapToRepository(Map<String, Object> map) {
+        // Extraer lenguaje principal
+        String primaryLanguage = getString(map, "language");
+        Map<String, Long> languageDistribution = null;
+        
+        // Si hay lenguaje, crear distribución simple (será el único lenguaje con 100%)
+        if (primaryLanguage != null && !primaryLanguage.isBlank()) {
+            languageDistribution = Map.of(primaryLanguage, 100L);
+        }
+        
         return Repository.builder()
                 .id(getLong(map, "id"))
                 .name(getString(map, "name"))
@@ -42,6 +51,7 @@ public class GithubApiResponseMapper {
                 .fork(getBoolean(map, "fork"))
                 .isPrivate(getBoolean(map, "private"))
                 .archived(getBoolean(map, "archived"))
+                .languageDistribution(languageDistribution)
                 .topics(getStringList(map, "topics"))
                 .build();
     }

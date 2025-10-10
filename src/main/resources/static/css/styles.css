@@ -1167,6 +1167,54 @@ body:has(.timeline-container.expanded) .three-container {
     transform: translateY(-1px);
 }
 
+/* Vista por categorías de tecnologías */
+.tech-category-group {
+    background: rgba(102, 126, 234, 0.05);
+    border-left: 3px solid rgba(102, 126, 234, 0.3);
+    padding: 0.75rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    margin-bottom: 0.5rem;
+}
+
+.tech-category-group:hover {
+    background: rgba(102, 126, 234, 0.08);
+    border-left-color: rgba(102, 126, 234, 0.6);
+}
+
+.tech-category-group small.fw-bold {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #667eea;
+}
+
+/* Botón flotante de CV */
+.cv-action-button {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 1000;
+}
+
+.cv-action-button button {
+    border-radius: 50px;
+    padding: 15px 30px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    animation: pulse-subtle 2s ease-in-out infinite;
+}
+
+.cv-action-button button:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 15px 40px rgba(40, 167, 69, 0.4) !important;
+}
+
+@keyframes pulse-subtle {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+}
+
 /* Badge para topics */
 .tech-badge {
     font-size: 0.75rem;
