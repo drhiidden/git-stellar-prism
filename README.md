@@ -34,12 +34,24 @@ Aplicación Spring Boot WebFlux que transforma repositorios de GitHub en especta
 
 1. Ve a [GitHub Developer Settings](https://github.com/settings/developers)
 2. Crear nueva **OAuth App**:
-   - **Application name**: `GitStellarPrism`
+   - **Application name**: `GitStellarPrism Local`
    - **Homepage URL**: `http://localhost:8080`
    - **Authorization callback URL**: `http://localhost:8080/login/oauth2/code/github`
 3. Copiar **Client ID** y **Client Secret**
 
 ### 2. Configurar Variables de Entorno
+
+#### **Opción A: Archivo `.env` (Recomendado)**
+
+```bash
+# 1. Copiar archivo de ejemplo
+cp .env.example .env
+
+# 2. Editar .env con tus credenciales
+# Reemplazar GITHUB_CLIENT_ID y GITHUB_CLIENT_SECRET
+```
+
+#### **Opción B: Variables de Sistema**
 
 ```bash
 # Windows (PowerShell)
@@ -49,15 +61,15 @@ $env:GITHUB_CLIENT_SECRET="tu_client_secret_aquí"
 # Linux/macOS
 export GITHUB_CLIENT_ID="tu_client_id_aquí"
 export GITHUB_CLIENT_SECRET="tu_client_secret_aquí"
-
-# Opcional: Secret para webhooks
-export GITHUB_WEBHOOK_SECRET="tu_webhook_secret_aquí"
 ```
 
 ### 3. Ejecutar la Aplicación
 
 ```bash
-cd ghvis
+# Con Maven Wrapper (recomendado)
+./mvnw spring-boot:run
+
+# O con Maven instalado
 mvn spring-boot:run
 ```
 
@@ -66,7 +78,28 @@ mvn spring-boot:run
 1. Ve a: http://localhost:8080
 2. Haz clic en **"Iniciar Sesión"** 
 3. Autoriza la aplicación en GitHub
-4. ¡Ingresa un repositorio y visualízalo!
+4. ¡Explora tus repositorios!
+
+### 5. Probar Generación de CV Técnico (NUEVO)
+
+```bash
+# Ejecutar script de pruebas automatizado
+
+# Windows
+.\test-cv-flow.ps1
+
+# Linux/macOS
+./test-cv-flow.sh
+```
+
+**Endpoints disponibles después de login:**
+- `GET /api/user/repositories` - Lista de tus repositorios
+- `GET /api/cv/summary` - Resumen técnico consolidado
+- `GET /api/cv/preview` - Preview del CV en HTML
+- `GET /api/cv/export/markdown` - Exportar CV a Markdown
+- `GET /api/cv/export/json` - Exportar datos a JSON
+
+> 📘 **Ver guía completa**: [SETUP.md](SETUP.md)
 
 ## 🎯 Cómo Usar
 

@@ -554,7 +554,10 @@ public class GithubApiAdapter {
         
         return githubWebClient.get()
                 .uri(uriBuilder -> uriBuilder
-                        .path(url)
+                        .path("/user/repos")
+                        .queryParam("visibility", "all")
+                        .queryParam("sort", "updated")
+                        .queryParam("per_page", "100")
                         .build())
                 .attributes(clientRegistrationId("github"))
                 .retrieve()

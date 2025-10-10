@@ -114,6 +114,36 @@ public class WebClientConfig {
     }
 
     /**
+     * WebClient público para acceso a GitHub API sin autenticación.
+     * Usado para endpoints públicos que no requieren OAuth2.
+     */
+    @Bean("publicWebClient")
+    public WebClient publicWebClient() {
+        HttpClient httpClient = HttpClient.create()
+            .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, connectionTimeout)
+            .doOnConnected(connection -> {
+                connection
+                    .addHandlerLast(new ReadTimeoutHandler(readTimeout, TimeUnit.MILLISECONDS))
+                    .addHandlerLast(new WriteTimeoutHandler(writeTimeout, TimeUnit.MILLISECONDS));
+            })
+            .responseTimeout(Duration.ofMillis(readTimeout));
+
+        return WebClient.builder()
+            .clientConnector(new ReactorClientHttpConnector(httpClient))
+            .baseUrl("https://api.github.com")
+            .defaultHeaders(headers -> {
+                headers.add("Accept", "application/vnd.github.v3+json");
+                headers.add("User-Agent", "GitStellarPrism/1.0");
+                headers.add("X-GitHub-Api-Version", "2022-11-28");
+            })
+            .codecs(configurer -> {
+                configurer.defaultCodecs().maxInMemorySize(maxInMemorySize);
+                configurer.defaultCodecs().enableLoggingRequestDetails(true);
+            })
+            .build();
+    }
+
+    /**
      * Crea un conector HTTP con configuraciones de timeout y performance optimizadas.
      */
     private ReactorClientHttpConnector createClientConnector() {
