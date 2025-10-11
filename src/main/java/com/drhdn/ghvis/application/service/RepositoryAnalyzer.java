@@ -24,6 +24,41 @@ import java.util.stream.Collectors;
 public class RepositoryAnalyzer {
     
     /**
+     * Lenguajes que NO son lenguajes de programación reales.
+     * Se excluyen formatos de documentación, configuración, etc.
+     */
+    private static final Set<String> EXCLUDED_LANGUAGES = Set.of(
+        // Formatos de documentación
+        "Jupyter Notebook",
+        "Markdown",
+        "reStructuredText",
+        "AsciiDoc",
+        "POD",
+        
+        // Formatos de configuración
+        "JSON",
+        "YAML",
+        "TOML",
+        "INI",
+        "XML",
+        
+        // Formatos de infraestructura
+        "Dockerfile",
+        "Makefile",
+        
+        // Frameworks que GitHub reporta como "lenguajes"
+        "Astro",  // Es un framework, no un lenguaje
+        "Svelte", // Es un framework, no un lenguaje (aunque tiene su sintaxis)
+        
+        // Otros
+        "Text",
+        "HTML",  // Markup, no programming
+        "CSS",   // Styling, no programming
+        "SCSS",
+        "Less"
+    );
+    
+    /**
      * Analiza lenguajes de programación usados
      */
     public Map<String, LanguageStats> analyzeLanguages(List<Repository> repos) {
@@ -38,7 +73,8 @@ public class RepositoryAnalyzer {
                     .map(Map.Entry::getKey)
                     .orElse(null);
                 
-                if (primaryLanguage != null) {
+                // Solo agregar si es un lenguaje de programación válido
+                if (primaryLanguage != null && !EXCLUDED_LANGUAGES.contains(primaryLanguage)) {
                     languageStats.computeIfAbsent(primaryLanguage, k -> new LanguageStats())
                         .addRepository(repo.getName());
                 }

@@ -1,8 +1,10 @@
 package com.drhdn.ghvis.infrastructure.config;
 
+import com.drhdn.ghvis.infrastructure.adapter.outbound.external.GitHubRateLimitInterceptor;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -26,7 +28,10 @@ import java.util.concurrent.TimeUnit;
  * - Configuraciones de timeout y performance optimizadas
  */
 @Configuration
+@RequiredArgsConstructor
 public class WebClientConfig {
+    
+    private final GitHubRateLimitInterceptor rateLimitInterceptor;
 
     @Value("${app.webclient.timeout.connection:10000}")
     private int connectionTimeout;
@@ -88,6 +93,7 @@ public class WebClientConfig {
                 headers.add("X-GitHub-Api-Version", "2022-11-28");
             })
             .filter(oauth2Filter)
+            .filter(rateLimitInterceptor) // ✅ Interceptor para tracking de rate limit
             .codecs(configurer -> {
                 configurer.defaultCodecs().maxInMemorySize(maxInMemorySize);
                 configurer.defaultCodecs().enableLoggingRequestDetails(true);

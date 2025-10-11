@@ -16,6 +16,14 @@
             </div>
         </div>
     </div>
+    
+    <!-- Sección de CV (flotante) -->
+    <div class="cv-action-button" id="cv-action-container" style="display: none;">
+        <button class="btn btn-success btn-lg shadow-lg" id="generate-cv-btn" title="Generar CV Técnico">
+            <i class="fas fa-file-alt me-2"></i>
+            Generar CV
+        </button>
+    </div>
 
     <!-- Toast notifications usando fragmento -->
     <div th:replace="~{fragments/header :: toast-notifications}"></div>
@@ -227,6 +235,9 @@
     <!-- Scripts usando fragmentos -->
     <div th:replace="~{fragments/header :: base-scripts}"></div>
     <div th:replace="~{fragments/header :: auth-scripts}"></div>
+    
+    <!-- Scripts de CV Integration -->
+    <script th:src="@{/js/cv-integration.js}"></script>
 
     <!-- Script para inicializar el Dashboard Unificado -->
     <script>

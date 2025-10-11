@@ -559,6 +559,7 @@ public class GithubApiAdapter {
                         .queryParam("sort", "updated")
                         .queryParam("per_page", "50")
                         .build())
+                .header("Accept", "application/vnd.github.mercy-preview+json") // Para incluir topics
                 .attributes(clientRegistrationId("github"))
                 .retrieve()
                 .bodyToFlux(Map.class)

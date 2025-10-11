@@ -779,17 +779,73 @@ class DashboardComponent extends BaseComponent {
         this.setState({ stats });
     }
 
-    updateTechnologies() {
+    async updateTechnologies() {
         const { repositories } = this.state;
         
-        // Usar el detector inteligente de tecnologías
+        // ✅ NUEVO: Obtener metadata desde backend (fuente de verdad)
+        try {
+            const response = await fetch('/api/metadata/technologies', {
+                credentials: 'include'
+            });
+            
+            if (response.ok) {
+                const metadata = await response.json();
+                console.log('✅ Metadata desde backend:', metadata);
+                
+                // Convertir a formato esperado por el dashboard
+                const technologies = new Set();
+                const technologyDetails = [];
+                
+                // Lenguajes (ya filtrados por backend)
+                metadata.languages.forEach(lang => {
+                    technologies.add(lang.name);
+                    technologyDetails.push({
+                        name: lang.name,
+                        count: lang.count,
+                        category: 'Programming Languages',
+                        repos: Array.from(lang.repositories || [])
+                    });
+                });
+                
+                // Frameworks (ya validados por backend)
+                metadata.frameworks.forEach(fw => {
+                    technologies.add(fw.name);
+                    technologyDetails.push({
+                        name: fw.name,
+                        count: fw.count,
+                        category: 'Frameworks & Libraries',
+                        repos: Array.from(fw.repositories || [])
+                    });
+                });
+                
+                // CI/CD Tools
+                metadata.cicdTools.forEach(tool => {
+                    technologies.add(tool);
+                    technologyDetails.push({
+                        name: tool,
+                        count: 1, // Backend no retorna count para CI/CD aún
+                        category: 'DevOps & Tools',
+                        repos: []
+                    });
+                });
+                
+                this.setState({ 
+                    technologies,
+                    technologyDetails,
+                    filteredRepositories: repositories 
+                });
+                
+                console.log(`✅ Tecnologías actualizadas desde backend: ${technologies.size} encontradas`);
+                return;
+            }
+        } catch (error) {
+            console.warn('⚠️ Error obteniendo metadata desde backend, usando fallback:', error);
+        }
+        
+        // ❌ FALLBACK: Usar el detector del frontend (viejo comportamiento)
         if (window.TechnologyDetector) {
             const stats = window.TechnologyDetector.getStatistics(repositories);
-            
-            // Crear Set con todas las tecnologías detectadas (para compatibilidad)
             const technologies = new Set(stats.technologies.map(t => t.name));
-            
-            // Guardar también el detalle completo para uso avanzado
             this.setState({ 
                 technologies,
                 technologyDetails: stats.technologies,
@@ -797,23 +853,14 @@ class DashboardComponent extends BaseComponent {
                 filteredRepositories: repositories 
             });
         } else {
-            // Fallback al método anterior si el detector no está cargado
+            // Fallback más básico
             const technologies = new Set();
             repositories.forEach(repo => {
                 const languages = repo.languages || repo.languageDistribution || {};
                 Object.keys(languages).forEach(lang => {
                     if (lang && lang.trim()) technologies.add(lang);
                 });
-                
-                const topics = repo.topics || [];
-                topics.forEach(topic => {
-                    if (topic && topic.trim()) {
-                        const formattedTopic = topic.charAt(0).toUpperCase() + topic.slice(1).toLowerCase();
-                        technologies.add(formattedTopic);
-                    }
-                });
             });
-            
             this.setState({ technologies, filteredRepositories: repositories });
         }
     }

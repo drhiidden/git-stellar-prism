@@ -94,10 +94,10 @@ public class GetRepositoryAnalysisUseCase {
                                                      boolean includePullRequests, boolean includeTechnicalSummary) {
         
         return Mono.zip(
-            includeCommits ? getCommits(requestId, owner, repo, principal) : Mono.just(List.<Commit>of()),
+            includeCommits ? getCommits(requestId, owner, repo, principal, startTime) : Mono.just(List.<Commit>of()),
             includeIssues ? getIssues(requestId, owner, repo, principal) : Mono.just(List.<Issue>of()),
             includePullRequests ? getPullRequests(requestId, owner, repo, principal) : Mono.just(List.<PullRequest>of()),
-            includeTechnicalSummary ? getTechnicalSummary(requestId, owner, repo, principal) : Mono.just(null)
+            includeTechnicalSummary ? getTechnicalSummary(requestId, owner, repo, principal, startTime) : Mono.just(null)
         )
         .map(tuple -> {
             List<Commit> commits = tuple.getT1();
@@ -117,7 +117,7 @@ public class GetRepositoryAnalysisUseCase {
     /**
      * Obtiene commits del repositorio.
      */
-    private Mono<List<Commit>> getCommits(String requestId, String owner, String repo, Principal principal) {
+    private Mono<List<Commit>> getCommits(String requestId, String owner, String repo, Principal principal, Instant startTime) {
         // Publicar evento de solicitud de commits
         CommitRetrievalRequestedEvent commitEvent = new CommitRetrievalRequestedEvent(owner, repo, principal, resilienceEnabled);
         eventPublisher.publish(commitEvent).subscribe();
@@ -125,10 +125,13 @@ public class GetRepositoryAnalysisUseCase {
         return commitRepository.findByRepository(owner, repo, principal)
             .collectList()
             .doOnSuccess(commits -> {
+                // ✅ FIX: Calcular duración correctamente usando startTime
+                long durationMs = java.time.Duration.between(startTime, Instant.now()).toMillis();
+                
                 // Publicar evento de completación de commits
                 CommitRetrievalCompletedEvent completedEvent = new CommitRetrievalCompletedEvent(
                     requestId, owner, repo, principal.getName(), commits.size(), 
-                    java.time.Duration.between(Instant.now(), Instant.now()).toMillis(), 
+                    durationMs, 
                     false, resilienceEnabled, "api");
                 eventPublisher.publish(completedEvent).subscribe();
             });
@@ -163,14 +166,17 @@ public class GetRepositoryAnalysisUseCase {
     /**
      * Obtiene resumen técnico del repositorio.
      */
-    private Mono<TechnicalSummary> getTechnicalSummary(String requestId, String owner, String repo, Principal principal) {
+    private Mono<TechnicalSummary> getTechnicalSummary(String requestId, String owner, String repo, Principal principal, Instant startTime) {
         return technicalSummaryRepository.generateForRepository(owner, repo, principal)
             .doOnSuccess(summary -> {
                 if (summary != null) {
+                    // ✅ FIX: Calcular duración correctamente usando startTime
+                    long durationMs = java.time.Duration.between(startTime, Instant.now()).toMillis();
+                    
                     // Publicar evento de generación de resumen técnico
                     TechnicalSummaryGeneratedEvent summaryEvent = new TechnicalSummaryGeneratedEvent(
                         requestId, owner, repo, principal.getName(), 
-                        java.time.Duration.between(Instant.now(), Instant.now()).toMillis(),
+                        durationMs,
                         summary.getTechnologies(), summary.getLanguages(), 
                         summary.getTotalFiles(), summary.getTotalSize(),
                         summary.getPrimaryLanguage(), summary.getComplexityScore(),

@@ -269,10 +269,26 @@ grep "Webhook recibido" logs/application.log
 
 Este proyecto está bajo la licencia MIT. Ver el archivo `LICENSE` para más detalles.
 
+## 📚 Documentación Consolidada
+
+📘 **Toda la documentación técnica está en `.cursor/`** (consolidada Octubre 2025)
+
+### **Documentos Maestros**:
+- [**INDICE_MAESTRO.md**](.cursor/INDICE_MAESTRO.md) - Índice completo
+- [**ARQUITECTURA_Y_BUENAS_PRACTICAS.md**](.cursor/ARQUITECTURA_Y_BUENAS_PRACTICAS.md) - Arquitectura completa
+- [**BUGFIXES_Y_SOLUCIONES.md**](.cursor/BUGFIXES_Y_SOLUCIONES.md) - Todos los bugs resueltos
+- [**IMPLEMENTACIONES_Y_ESTRATEGIAS.md**](.cursor/IMPLEMENTACIONES_Y_ESTRATEGIAS.md) - CQRS, Rate Limit, CV
+- [**GUIAS_SETUP_Y_TESTING.md**](.cursor/GUIAS_SETUP_Y_TESTING.md) - Setup y testing
+
+### **Quick Start**:
+1. **Setup** → [Guías de Setup](.cursor/GUIAS_SETUP_Y_TESTING.md#1-setup-inicial)
+2. **Arquitectura** → [Overview Arquitectónico](.cursor/ARQUITECTURA_Y_BUENAS_PRACTICAS.md)
+3. **HCP Templates** → [Quick Reference](.cursor/protocol_hcp/QUICK_REFERENCE.md)
+
 ## 🆘 Soporte
 
 - **Issues**: [GitHub Issues](https://github.com/tu-usuario/gitstellarprism/issues)
-- **Documentación**: [Wiki del proyecto](https://github.com/tu-usuario/gitstellarprism/wiki)
+- **Documentación Técnica**: `.cursor/` (ver arriba)
 - **Discusiones**: [GitHub Discussions](https://github.com/tu-usuario/gitstellarprism/discussions)
 
 ---
