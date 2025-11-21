@@ -54,9 +54,10 @@ public class GithubRepositoryRepositoryAdapter implements RepositoryRepository {
             return Flux.empty();
         }
         
-        log.debug("🔍 Obteniendo repositorios del usuario autenticado");
+        log.debug("🔍 Obteniendo repositorios del usuario autenticado (con detalles)");
         
-        return githubApiAdapter.getUserRepositories(principal)
+        // Usamos getUserRepositoriesWithDetails para obtener lenguajes y porcentajes
+        return githubApiAdapter.getUserRepositoriesWithDetails(principal)
             .doOnComplete(() -> log.debug("✅ Repositorios obtenidos para usuario"))
             .doOnError(error -> log.error("❌ Error obteniendo repositorios del usuario: {}", 
                 error.getMessage()));

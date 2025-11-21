@@ -6,6 +6,7 @@ import com.drhdn.ghvis.domain.entity.Commit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -27,12 +28,17 @@ import static org.springframework.security.oauth2.client.web.reactive.function.c
  * @version 1.0.0
  */
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class GithubCommitRepositoryAdapter implements CommitRepository {
     
     private final WebClient githubWebClient;
     private final RateLimitService rateLimitService;
+
+    public GithubCommitRepositoryAdapter(@Qualifier("githubWebClient") WebClient githubWebClient, 
+                                         RateLimitService rateLimitService) {
+        this.githubWebClient = githubWebClient;
+        this.rateLimitService = rateLimitService;
+    }
     
     @Override
     public Flux<Commit> findByRepository(String owner, String repo, Principal principal) {
