@@ -85,7 +85,10 @@ public class CVExportService {
     private void appendCICD(StringBuilder md, TechnicalMetadata techMetadata) {
         if (!techMetadata.cicdTools().isEmpty()) {
             md.append("## ⚙️ DevOps & Tools\n\n");
-            techMetadata.cicdTools().forEach(tool -> md.append("- ").append(tool).append("\n"));
+            techMetadata.cicdTools().entrySet().stream()
+                .sorted((e1, e2) -> Integer.compare(e2.getValue().getProjectCount(), e1.getValue().getProjectCount()))
+                .forEach(entry -> md.append("- ").append(entry.getKey())
+                    .append(" (").append(entry.getValue().getProjectCount()).append(" projects)\n"));
             md.append("\n");
         }
     }
