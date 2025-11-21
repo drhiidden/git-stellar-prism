@@ -799,10 +799,18 @@ class DashboardComponent extends BaseComponent {
                 // Lenguajes (ya filtrados por backend)
                 metadata.languages.forEach(lang => {
                     technologies.add(lang.name);
+                    // Enriquecer con metadatos visuales del detector
+                    const techInfo = window.TechnologyDetector ? 
+                        window.TechnologyDetector.findTechnologyInfo(lang.name, 'Programming Languages') : 
+                        { icon: '💻', categoryIcon: '💻', priority: 1 };
+
                     technologyDetails.push({
                         name: lang.name,
                         count: lang.count,
                         category: 'Programming Languages',
+                        icon: techInfo.icon,
+                        categoryIcon: techInfo.categoryIcon,
+                        priority: techInfo.priority,
                         repos: Array.from(lang.repositories || [])
                     });
                 });
@@ -810,10 +818,17 @@ class DashboardComponent extends BaseComponent {
                 // Frameworks (ya validados por backend)
                 metadata.frameworks.forEach(fw => {
                     technologies.add(fw.name);
+                    const techInfo = window.TechnologyDetector ? 
+                        window.TechnologyDetector.findTechnologyInfo(fw.name, 'Frameworks') : 
+                        { icon: '⚡', categoryIcon: '⚡', priority: 2 };
+
                     technologyDetails.push({
                         name: fw.name,
                         count: fw.count,
                         category: 'Frameworks & Libraries',
+                        icon: techInfo.icon,
+                        categoryIcon: techInfo.categoryIcon,
+                        priority: techInfo.priority,
                         repos: Array.from(fw.repositories || [])
                     });
                 });
@@ -821,10 +836,17 @@ class DashboardComponent extends BaseComponent {
                 // CI/CD Tools
                 metadata.cicdTools.forEach(tool => {
                     technologies.add(tool);
+                    const techInfo = window.TechnologyDetector ? 
+                        window.TechnologyDetector.findTechnologyInfo(tool, 'DevOps') : 
+                        { icon: '🛠️', categoryIcon: '🛠️', priority: 3 };
+
                     technologyDetails.push({
                         name: tool,
-                        count: 1, // Backend no retorna count para CI/CD aún
+                        count: 1, 
                         category: 'DevOps & Tools',
+                        icon: techInfo.icon,
+                        categoryIcon: techInfo.categoryIcon,
+                        priority: techInfo.priority,
                         repos: []
                     });
                 });

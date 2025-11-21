@@ -68,7 +68,7 @@ public class MetadataController {
                 var response = TechnologyMetadataResponse.builder()
                     .languages(convertLanguages(metadata.languages()))
                     .frameworks(convertFrameworks(metadata.frameworks()))
-                    .cicdTools(metadata.cicdTools())
+                    .cicdTools(convertCICD(metadata.cicdTools()))
                     .openSourceProjects(metadata.openSourceProjects().stream()
                         .limit(10)
                         .map(p -> OpenSourceProjectDTO.builder()
@@ -121,6 +121,21 @@ public class MetadataController {
             .collect(Collectors.toList());
     }
     
+    /**
+     * Convierte estadísticas de herramientas CI/CD a DTOs
+     */
+    private List<TechnologyStat> convertCICD(java.util.Map<String, RepositoryAnalyzer.FrameworkStats> cicdTools) {
+        return cicdTools.entrySet().stream()
+            .map(entry -> TechnologyStat.builder()
+                .name(entry.getKey())
+                .count(entry.getValue().getProjectCount())
+                .category("DevOps & Tools")
+                .repositories(entry.getValue().getRepositories())
+                .build())
+            .sorted(Comparator.comparing(TechnologyStat::getCount).reversed())
+            .collect(Collectors.toList());
+    }
+    
     // ========== DTOs ==========
     
     @Data
@@ -128,7 +143,7 @@ public class MetadataController {
     public static class TechnologyMetadataResponse {
         private List<TechnologyStat> languages;
         private List<TechnologyStat> frameworks;
-        private Set<String> cicdTools;
+        private List<TechnologyStat> cicdTools;
         private List<OpenSourceProjectDTO> openSourceProjects;
     }
     
