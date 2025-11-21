@@ -173,17 +173,33 @@ class GitStellarPrismApp {
      * Inicializa componentes específicos del análisis
      */
     async initializeAnalysisComponents() {
-        // Componente de visualización 3D
-        const visualizationContainer = document.querySelector('#visualization-container');
-        if (visualizationContainer) {
-            // Aquí se inicializaría el componente de visualización
-            console.log('🎮 Inicializando componente de visualización...');
+        console.log('🎮 Inicializando componentes de análisis...');
+        
+        // Obtener repositorio de la URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const repo = urlParams.get('repo');
+        
+        if (!repo) {
+            console.error('❌ No se especificó repositorio en la URL');
+            const notification = this.components.get('notification');
+            if (notification) notification.showError('No se ha especificado un repositorio para analizar');
+            return;
         }
 
-        // Componente de timeline
-        const timelineContainer = document.querySelector('#timeline-container');
-        if (timelineContainer) {
-            console.log('📈 Inicializando componente de timeline...');
+        // Usar el coordinador de análisis
+        if (typeof AnalysisCoordinator !== 'undefined') {
+            const coordinator = AnalysisCoordinator.getInstance();
+            try {
+                await coordinator.initialize(repo);
+                this.services.set('analysisCoordinator', coordinator);
+                console.log('✅ Coordinador de análisis iniciado correctamente');
+            } catch (error) {
+                console.error('❌ Error iniciando coordinador de análisis:', error);
+                const notification = this.components.get('notification');
+                if (notification) notification.showError(`Error iniciando análisis: ${error.message}`);
+            }
+        } else {
+            console.error('❌ AnalysisCoordinator no está definido');
         }
     }
 
@@ -227,10 +243,9 @@ class GitStellarPrismApp {
      * Configura la conexión en tiempo real
      */
     setupRealtimeConnection() {
-        if (this.currentPage === 'analysis' || this.currentPage === 'dashboard') {
-            console.log('🔗 Estableciendo conexión en tiempo real...');
-            this.realtimeService.connect('/stream/events');
-        }
+        // La conexión se maneja reactivamente en HeaderComponent y AnalysisCoordinator
+        // basado en el estado 'currentRepo'. No forzamos conexión aquí para evitar errores.
+        console.log('🔗 Sistema de tiempo real listo (esperando repositorio activo)');
     }
 
     /**

@@ -468,6 +468,7 @@ class DashboardComponent extends BaseComponent {
     }
 
     renderRepositoryCard(repo) {
+        const { sortBy } = this.state;
         const languages = repo.languages || repo.languageDistribution || {};
         const primaryLanguage = Object.keys(languages)[0];
         const languageColor = this.getLanguageColor(primaryLanguage);
@@ -475,6 +476,17 @@ class DashboardComponent extends BaseComponent {
         const stars = repo.stargazers_count || repo.stargazersCount || 0;
         const forks = repo.forks_count || repo.forksCount || 0;
         const isPrivate = repo.private || repo.isPrivate || false;
+
+        // Determinar qué fecha mostrar según el ordenamiento
+        let dateValue = repo.updated_at || repo.updatedAt;
+        let dateLabel = 'Actualizado';
+        let dateIcon = 'clock';
+
+        if (sortBy === 'created') {
+            dateValue = repo.created_at || repo.createdAt;
+            dateLabel = 'Creado';
+            dateIcon = 'calendar-plus';
+        }
 
         return `
             <div class="col-md-6 col-lg-4 mb-4">
@@ -523,23 +535,19 @@ class DashboardComponent extends BaseComponent {
                                     <i class="fas fa-code-branch text-info me-1"></i>${forks}
                                 </small>
                                 </div>
-                            <small class="text-muted">
-                                <i class="fas fa-clock me-1"></i>
-                                ${this.formatDate(repo.updated_at || repo.updatedAt)}
+                            <small class="text-muted" title="${dateLabel}: ${new Date(dateValue).toLocaleDateString()}">
+                                <i class="fas fa-${dateIcon} me-1"></i>
+                                ${this.formatDate(dateValue)}
                             </small>
                                 </div>
                                 
                         <!-- Acciones -->
-                                    <div class="d-grid gap-2">
+                        <div class="d-grid">
                             <button class="btn btn-primary btn-sm" data-action="analyze" data-repo="${repo.full_name || repo.owner + '/' + repo.name}">
-                                <i class="fas fa-chart-line me-1"></i>
-                                Analizar Repositorio
+                                <i class="fas fa-cube me-1"></i>
+                                Ver Análisis y Grafo 3D
                             </button>
-                            <button class="btn btn-outline-info btn-sm" data-action="graph" data-repo="${repo.full_name || repo.owner + '/' + repo.name}">
-                                <i class="fas fa-project-diagram me-1"></i>
-                                Generar Grafo
-                                        </button>
-                                    </div>
+                        </div>
                     </div>
                 </div>
             </div>

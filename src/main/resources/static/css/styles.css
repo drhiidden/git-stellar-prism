@@ -1,2309 +1,466 @@
 /* ================================
-   GITSTELLARPRISM - MODERN UI
-   INTEGRACIÓN CON BOOTSTRAP 5
+   GITSTELLARPRISM - UNIFIED DESIGN SYSTEM
    ================================ */
 
-/* Variables CSS para consistencia y theming */
 :root {
-    /* Colores principales */
-    --primary-color: #2563eb;
-    --primary-dark: #1d4ed8;
-    --primary-light: #3b82f6;
-    --secondary-color: #64748b;
-    --secondary-light: #94a3b8;
+    /* --- PALETA DE COLORES --- */
+    /* Primario: Azul Profesional */
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --primary-light: #eff6ff;
     
-    /* Colores de fondo */
-    --bg-primary: #ffffff;
-    --bg-secondary: #f8fafc;
-    --bg-tertiary: #f1f5f9;
-    --bg-dark: #0f172a;
-    --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    /* Secundario: Slate Neutro */
+    --secondary: #64748b;
+    --secondary-hover: #475569;
+    --secondary-light: #f1f5f9;
+
+    /* Acentos */
+    --accent: #06b6d4; /* Cyan para elementos tecnológicos */
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+
+    /* --- FONDOS --- */
+    --bg-body: #f8fafc; /* Fondo general claro */
+    --bg-surface: #ffffff; /* Cards y paneles */
+    --bg-dark: #0f172a; /* Paneles oscuros (3D, Timeline) */
+    --bg-dark-elevated: #1e293b; /* Elementos sobre fondo oscuro */
+
+    /* --- TEXTOS --- */
+    --text-main: #0f172a;
+    --text-secondary: #64748b;
+    --text-inverse: #f8fafc; /* Texto sobre fondo oscuro */
+    --text-muted-inverse: #94a3b8;
+
+    /* --- BORDES Y SOMBRAS --- */
+    --border-light: #e2e8f0;
+    --border-dark: #334155;
     
-    /* Colores de texto */
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
-    --text-white: #ffffff;
-    
-    /* Colores de estado */
-    --success-color: #10b981;
-    --warning-color: #f59e0b;
-    --error-color: #ef4444;
-    --info-color: #3b82f6;
-    
-    /* Sombras mejoradas */
     --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-    
-    /* Espaciado y medidas */
-    --border-radius: 0.75rem;
-    --border-radius-sm: 0.5rem;
-    --border-radius-lg: 1rem;
-    
-    /* Tipografía */
-    --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    
-    /* Transiciones */
-    --transition-fast: 0.15s ease;
-    --transition-normal: 0.25s ease;
-    --transition-slow: 0.35s ease;
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.3);
+
+    /* --- MEDIDAS --- */
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 1rem;
+    --header-height: 64px;
 }
 
 /* ================================
-   CONFIGURACIÓN BASE
+   BASE & RESET
    ================================ */
 
 body {
-    font-family: var(--font-family-sans);
-    background: var(--bg-gradient);
-    color: var(--text-primary);
-    line-height: 1.6;
-    font-size: 0.9rem;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--text-main);
+    font-weight: 600;
+    letter-spacing: -0.025em;
+}
+
+a {
+    color: var(--primary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a:hover {
+    color: var(--primary-hover);
 }
 
 /* ================================
-   NAVEGACIÓN MEJORADA
+   LAYOUT & NAVBAR
    ================================ */
 
 .modern-navbar {
-    background: rgba(255, 255, 255, 0.95) !important;
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(226, 232, 240, 0.5);
-    box-shadow: var(--shadow-sm);
-    padding: 0.75rem 0;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-light);
+    height: var(--header-height);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
 .navbar-brand {
     font-weight: 700;
-    color: var(--primary-color) !important;
+    color: var(--primary) !important;
     font-size: 1.25rem;
-}
-
-.navbar-brand i {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 /* ================================
-   CARDS MODERNOS
+   TARJETAS (CARDS)
    ================================ */
 
-.modern-card {
-    border: 1px solid rgba(226, 232, 240, 0.6);
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-md);
-    transition: var(--transition-normal);
+.card, .modern-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
     overflow: hidden;
-    background: var(--bg-primary);
 }
 
-.modern-card:hover {
-    box-shadow: var(--shadow-lg);
+.card:hover, .modern-card:hover {
     transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
-.modern-card-header {
-    background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
-    border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+.card-header, .modern-card-header {
+    background: transparent;
+    border-bottom: 1px solid var(--border-light);
     padding: 1rem 1.25rem;
+    font-weight: 600;
+    color: var(--text-main);
 }
 
-.modern-card-header .card-title {
+.card-body {
+    padding: 1.25rem;
+}
+
+/* ================================
+   BOTONES & CONTROLES
+   ================================ */
+
+.btn {
+    font-weight: 500;
+    border-radius: var(--radius-md);
+    padding: 0.5rem 1rem;
+    transition: all 0.2s;
+}
+
+/* Primario */
+.btn-primary, .modern-btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+/* Secundario / Outline */
+.btn-outline-secondary {
+    color: var(--secondary);
+    border-color: var(--border-light);
+    background: transparent;
+}
+
+.btn-outline-secondary:hover {
+    color: var(--text-main);
+    border-color: var(--secondary);
+    background: var(--bg-body);
+}
+
+/* Light (Fondo suave) */
+.btn-light {
+    background: var(--bg-body);
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+}
+
+.btn-light:hover {
+    background: var(--border-light);
+    color: var(--text-main);
+}
+
+/* Inputs */
+.form-control, .form-select {
+    border-color: var(--border-light);
+    border-radius: var(--radius-md);
+    padding: 0.6rem 1rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+/* ================================
+   BADGES & PILLS
+   ================================ */
+
+.tech-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 50px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-light);
+    color: var(--text-secondary);
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.tech-pill:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: var(--primary-light);
+}
+
+.tech-pill.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: var(--shadow-sm);
+}
+
+.badge {
     font-weight: 600;
-    color: var(--text-primary);
+    padding: 0.35em 0.65em;
+    border-radius: var(--radius-sm);
+}
+
+/* ================================
+   COMPONENTES OSCUROS (Timeline, 3D)
+   ================================ */
+
+/* Contenedores Principales */
+.visualization-container, 
+.three-container,
+.timeline-container {
+    background-color: var(--bg-dark);
+    background-image: radial-gradient(circle at top right, rgba(59, 130, 246, 0.1), transparent 40%);
+    color: var(--text-inverse);
+    border: 1px solid var(--border-dark);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-lg);
+}
+
+/* Canvas 3D */
+.visualization-container canvas,
+.three-container canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+    outline: none;
+}
+
+/* Timeline */
+.timeline-container {
+    height: 350px;
+    min-height: 250px;
+    transition: height 0.3s ease-in-out;
+    overflow-y: auto;
+}
+
+.timeline-container.expanded {
+    height: 600px;
+}
+
+.timeline-content {
+    padding: 1.5rem;
+}
+
+/* Items del Timeline */
+.timeline-item {
+    background: var(--bg-dark-elevated);
+    border: 1px solid var(--border-dark);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    transition: transform 0.2s, border-color 0.2s;
+    position: relative;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--border-dark);
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+    transition: background 0.2s;
+}
+
+.timeline-item:hover {
+    transform: translateX(4px);
+    border-color: var(--primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.timeline-item:hover::before {
+    background: var(--primary);
+}
+
+.timeline-item strong {
+    color: var(--text-inverse);
     font-size: 0.95rem;
 }
 
-/* ================================
-   BOTONES MEJORADOS
-   ================================ */
-
-.modern-btn-primary {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light)) !important;
-    border: none !important;
-    box-shadow: var(--shadow-sm);
-    transition: var(--transition-fast);
+.timeline-item small, 
+.timeline-item .text-muted {
+    color: var(--text-muted-inverse) !important;
 }
 
-.modern-btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
-    background: linear-gradient(135deg, var(--primary-dark), var(--primary-color)) !important;
+.timeline-item .badge {
+    background: rgba(59, 130, 246, 0.2);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
-.modern-input {
-    border: 2px solid rgba(226, 232, 240, 0.8) !important;
-    transition: var(--transition-fast);
-    font-size: 0.875rem;
-}
-
-.modern-input:focus {
-    border-color: var(--primary-color) !important;
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
-}
-
-/* ================================
-   ÁREA DE VISUALIZACIÓN
-   ================================ */
-
-.visualization-container {
-    position: relative;
-    width: 100%;
-    height: 70vh;
-    min-height: 500px;
-    background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
-    border-radius: var(--border-radius-sm);
-    overflow: hidden;
-}
-
-#threejs-canvas {
-    width: 100% !important;
-    height: 100% !important;
-    display: block;
-}
-
-/* Overlay de controles */
-.visualization-overlay {
-    position: absolute;
-    top: 1rem;
-    left: 1rem;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
-    padding: 0.5rem 0.75rem;
-    border-radius: var(--border-radius-sm);
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+/* Header del Timeline */
+.timeline-header {
+    position: sticky;
+    top: 0;
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(8px);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-dark);
     z-index: 10;
-    box-shadow: var(--shadow-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-/* Controles de zoom flotantes */
+/* ================================
+   OVERLAYS & TOOLTIPS
+   ================================ */
+
+.visualization-overlay,
+.commit-info-panel,
+.info-tooltip {
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-dark);
+    color: var(--text-inverse);
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+}
+
 .zoom-controls {
     position: absolute;
-    top: 1rem;
-    right: 1rem;
+    right: 1.5rem;
+    bottom: 1.5rem;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    z-index: 10;
+    z-index: 50;
 }
 
 .zoom-controls .btn {
-    width: 2.5rem;
-    height: 2.5rem;
+    width: 40px;
+    height: 40px;
+    padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: var(--border-radius-sm);
-    box-shadow: var(--shadow-sm);
-    backdrop-filter: blur(10px);
-}
-
-/* ================================
-   TIMELINE MODERNO
-   ================================ */
-
-.timeline-container {
-    position: relative;
-    width: 100%;
-    height: 120px; /* Por defecto compacto - solo header + 2-3 items */
-    min-height: 120px;
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%);
-    border-radius: 0.5rem;
-    overflow: hidden; /* Esconder overflow hasta que se expanda */
-    border: 1px solid rgba(0, 212, 255, 0.3);
-    color: #ffffff !important;
-    z-index: 1;
-    transition: height 0.3s ease, min-height 0.3s ease; /* Animación suave */
-    /* Asegurar que el contenido sea visible */
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-/* Timeline expandido */
-.timeline-container.expanded {
-    height: 400px; /* Más espacio cuando se expande */
-    min-height: 400px;
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-
-/* Botón de toggle para expandir/colapsar */
-.timeline-toggle-btn {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    background: rgba(0, 212, 255, 0.8) !important;
-    border: 1px solid rgba(0, 212, 255, 0.6) !important;
-    color: #ffffff !important;
-    padding: 6px 12px !important;
-    border-radius: 20px !important;
-    font-size: 0.75rem !important;
-    font-weight: 600 !important;
-    cursor: pointer !important;
-    transition: all 0.2s ease !important;
-    z-index: 10 !important;
-}
-
-.timeline-toggle-btn:hover {
-    background: rgba(0, 212, 255, 1) !important;
-    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.4) !important;
-    transform: translateY(-1px) !important;
-}
-
-.timeline-toggle-btn i {
-    margin-right: 4px !important;
-    transition: transform 0.2s ease !important;
-}
-
-/* Rotar ícono cuando está expandido */
-.timeline-container.expanded .timeline-toggle-btn i {
-    transform: rotate(180deg) !important;
-}
-
-/* Estilos para timeline mejorados con mejor contraste - modo compacto */
-.timeline-content {
-    max-height: none; /* Quitar límite para que funcione con el contenedor */
-    overflow: visible; /* El overflow lo maneja el contenedor */
-    color: #ffffff !important;
-    padding: 15px;
-    padding-top: 45px; /* Espacio para el botón de toggle */
-}
-
-/* En modo compacto, mostrar menos items */
-.timeline-container:not(.expanded) .timeline-content {
-    padding-top: 45px;
-}
-
-.timeline-container:not(.expanded) .timeline-item:nth-child(n+4) {
-    display: none; /* Ocultar items después del 3ro en modo compacto */
-}
-
-/* Indicador de más elementos en modo compacto */
-.timeline-compact-indicator {
-    display: none;
-    text-align: center;
-    padding: 8px;
-    color: #b3d9ff !important;
-    font-size: 0.8rem;
-    border-top: 1px solid rgba(0, 212, 255, 0.2);
-    background: rgba(0, 212, 255, 0.05);
-}
-
-.timeline-container:not(.expanded) .timeline-compact-indicator {
-    display: block;
-}
-
-.timeline-container.expanded .timeline-compact-indicator {
-    display: none;
-}
-
-/* ================================
-   RESPONSIVE TIMELINE DESIGN
-   ================================ */
-
-/* Tablet y móvil */
-@media (max-width: 768px) {
-    .timeline-container {
-        height: 100px; /* Aún más compacto en móviles */
-        min-height: 100px;
-    }
-    
-    .timeline-container.expanded {
-        height: 300px; /* Menos altura en móviles cuando está expandido */
-        min-height: 300px;
-    }
-    
-    .timeline-toggle-btn {
-        font-size: 0.7rem !important;
-        padding: 4px 8px !important;
-    }
-    
-    .timeline-toggle-btn span {
-        display: none !important; /* Solo ícono en móviles */
-    }
-    
-    .three-container {
-        height: 600px; /* Más espacio para visualización en móviles */
-    }
-    
-    body:has(.timeline-container.expanded) .three-container {
-        height: 450px;
-    }
-}
-
-/* Móvil pequeño */
-@media (max-width: 576px) {
-    .timeline-container {
-        height: 80px; /* Súper compacto */
-    }
-    
-    .timeline-container:not(.expanded) .timeline-item:nth-child(n+3) {
-        display: none; /* Solo 2 items en móviles pequeños */
-    }
-    
-    .three-container {
-        height: 500px;
-    }
-}
-
-/* Nodos del timeline */
-.timeline-commit-circle {
-    cursor: pointer;
-    transition: var(--transition-fast);
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-}
-
-.timeline-commit-circle:hover {
-    transform: scale(1.2);
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
-}
-
-/* ================================
-   ESTADOS DE CARGA
-   ================================ */
-
-.modern-spinner {
-    width: 40px;
-    height: 40px;
-    border: 3px solid rgba(37, 99, 235, 0.1);
-    border-top: 3px solid var(--primary-color);
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    background: var(--bg-dark-elevated);
+    color: var(--text-inverse);
+    border: 1px solid var(--border-dark);
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.zoom-controls .btn:hover {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
 }
 
 /* ================================
-   INDICADORES DE ESTADO
+   UTILIDADES & ESTADOS
    ================================ */
 
+/* Scrollbar Personalizado (Dark Mode para Timeline) */
+.timeline-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+.timeline-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.timeline-container::-webkit-scrollbar-thumb {
+    background: var(--border-dark);
+    border-radius: 4px;
+}
+
+.timeline-container::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary);
+}
+
+/* Indicadores de Estado */
 .status-indicator {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     padding: 0.25rem 0.75rem;
-    border-radius: var(--border-radius-sm);
+    border-radius: 50px;
     font-size: 0.75rem;
     font-weight: 600;
-    transition: var(--transition-fast);
 }
 
-.status-success {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--success-color);
-    border: 1px solid rgba(16, 185, 129, 0.2);
+.status-indicator.connected {
+    background: #dcfce7;
+    color: #166534;
+    border: 1px solid #bbf7d0;
 }
 
-.status-error {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--error-color);
-    border: 1px solid rgba(239, 68, 68, 0.2);
+.status-indicator.disconnected {
+    background: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
 }
 
-.status-warning {
-    background: rgba(245, 158, 11, 0.1);
-    color: var(--warning-color);
-    border: 1px solid rgba(245, 158, 11, 0.2);
-}
-
-/* ================================
-   ANIMACIONES Y TRANSICIONES
-   ================================ */
-
-/* Fade in animation */
+/* Animaciones */
 @keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .fade-in {
-    animation: fadeIn 0.6s ease forwards;
-}
-
-/* Pulse animation para elementos importantes */
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.7;
-    }
+    animation: fadeIn 0.4s ease-out forwards;
 }
 
 .pulse {
     animation: pulse 2s infinite;
 }
 
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
 /* ================================
    RESPONSIVE DESIGN
    ================================ */
 
-@media (max-width: 1200px) {
-    .visualization-container {
-        height: 60vh;
-        min-height: 450px;
-    }
-}
-
 @media (max-width: 768px) {
-    body {
-        font-size: 0.85rem;
-    }
+    .card-body { padding: 1rem; }
     
-    .modern-navbar {
-        padding: 0.5rem 0;
-    }
+    .timeline-container { height: 300px; }
     
-    .navbar-brand {
-        font-size: 1.1rem;
-    }
-    
-    .modern-card-header {
-        padding: 0.75rem 1rem;
-    }
-    
-    .modern-card-header .card-title {
-        font-size: 0.9rem;
-    }
-    
-    .visualization-container {
-        height: 50vh;
-        min-height: 350px;
-    }
-    
-    .timeline-container {
-        height: 200px;
-    }
-    
-    .visualization-overlay {
-        font-size: 0.65rem;
-        padding: 0.25rem 0.5rem;
-    }
-    
-    .zoom-controls .btn {
-        width: 2rem;
-        height: 2rem;
-    }
-}
-
-@media (max-width: 480px) {
-    .visualization-container {
-        height: 45vh;
-        min-height: 300px;
-    }
-    
-    .status-indicator {
-        font-size: 0.65rem;
-        padding: 0.2rem 0.5rem;
-    }
-}
-
-/* ================================
-   MEJORAS ESPECÍFICAS
-   ================================ */
-
-/* Mejorar espaciado y padding de cards */
-.card-body {
-    padding: 1.25rem;
-}
-
-/* Hover effects para botones */
-.btn {
-    transition: var(--transition-fast);
-}
-
-.btn:hover {
-    transform: translateY(-1px);
-}
-
-/* Mejorar formularios */
-.form-label {
-    font-weight: 500;
-    margin-bottom: 0.5rem;
-}
-
-.form-text {
-    font-size: 0.8rem;
-    margin-top: 0.25rem;
-}
-
-/* Dropdown mejorado */
-.dropdown-menu {
-    border: 1px solid rgba(226, 232, 240, 0.6);
-    box-shadow: var(--shadow-lg);
-    border-radius: var(--border-radius-sm);
-}
-
-.dropdown-item {
-    transition: var(--transition-fast);
-}
-
-.dropdown-item:hover {
-    background-color: var(--bg-secondary);
-}
-
-/* Modal mejorado */
-.modal-content {
-    border: 1px solid rgba(226, 232, 240, 0.6);
-    box-shadow: var(--shadow-xl);
-    border-radius: var(--border-radius);
-}
-
-/* Toast notifications */
-.toast {
-    border: 1px solid rgba(226, 232, 240, 0.6);
-    box-shadow: var(--shadow-lg);
-    border-radius: var(--border-radius-sm);
-}
-
-/* ================================
-   UTILIDADES ADICIONALES
-   ================================ */
-
-.text-gradient {
-    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.hover-lift {
-    transition: var(--transition-normal);
-}
-
-.hover-lift:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-lg);
-}
-
-/* Scroll suave */
-html {
-    scroll-behavior: smooth;
-}
-
-/* Mejorar selección de texto */
-::selection {
-    background: rgba(37, 99, 235, 0.2);
-}
-
-/* Focus visible mejorado */
-.btn:focus-visible,
-.form-control:focus-visible,
-.form-select:focus-visible {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
-
-/* ================================
-   DARK MODE SUPPORT (Preparado)
-   ================================ */
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --bg-primary: #1e293b;
-        --bg-secondary: #0f172a;
-        --bg-tertiary: #334155;
-        --text-primary: #f1f5f9;
-        --text-secondary: #cbd5e1;
-        --text-muted: #64748b;
-    }
-    
-    .navbar {
-        background: rgba(15, 23, 42, 0.95) !important;
-        border-bottom-color: rgba(71, 85, 105, 0.5);
-    }
-}
-
-/* ================================
-   Git Graph & Timeline Styles
-================================ */
-
-/* Timeline Container */
-.timeline-main-container {
-    background: var(--bs-white);
-    border-radius: var(--border-radius-lg);
-    box-shadow: var(--shadow-lg);
-    padding: 1rem;
-    margin-bottom: 2rem;
-}
-
-.timeline-svg-container {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border: 1px solid var(--bs-gray-300);
-    border-radius: var(--border-radius);
-    overflow: hidden;
-    position: relative;
-}
-
-.timeline-svg {
-    display: block;
-    width: 100%;
-    background: transparent;
-}
-
-/* Timeline Controls */
-.timeline-controls {
-    margin-bottom: 1rem;
-    padding: 0.75rem;
-    background: var(--bs-gray-50);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--bs-gray-200);
-}
-
-.timeline-controls .btn {
-    transition: all 0.2s ease;
-    font-size: 0.875rem;
-}
-
-.timeline-controls .btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
-}
-
-.timeline-controls .btn.active {
-    background: var(--primary-gradient);
-    border-color: var(--primary-color);
-    color: white;
-}
-
-/* Timeline Stats */
-.timeline-stats {
-    background: var(--bs-white);
-    border: 1px solid var(--bs-gray-200);
-    border-radius: var(--border-radius);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-}
-
-.timeline-stats .card-body {
-    padding: 0.75rem;
-}
-
-.timeline-stats .border {
-    border: 1px solid var(--bs-gray-200) !important;
-    background: var(--bs-gray-50);
-    transition: all 0.2s ease;
-}
-
-.timeline-stats .border:hover {
-    background: var(--bs-white);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* Timeline Legend */
-.timeline-legend {
-    padding: 0.5rem;
-    background: var(--bs-gray-50);
-    border-radius: var(--border-radius);
-    border: 1px solid var(--bs-gray-200);
-}
-
-.timeline-legend small {
-    font-size: 0.8rem;
-}
-
-/* Timeline SVG Elements */
-.timeline-grid-line-vertical,
-.timeline-grid-line-horizontal {
-    stroke: var(--bs-gray-300);
-    stroke-width: 1;
-    opacity: 0.3;
-}
-
-.timeline-branch-line {
-    stroke-width: 3;
-    opacity: 0.7;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
-}
-
-.timeline-commit-circle {
-    stroke: #ffffff;
-    stroke-width: 2;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.timeline-commit-circle:hover {
-    stroke-width: 3;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.3));
-}
-
-.timeline-commit-circle.selected {
-    stroke: var(--primary-color);
-    stroke-width: 4;
-    filter: drop-shadow(0 0 10px var(--primary-color));
-}
-
-.timeline-commit-circle.highlighted {
-    stroke: var(--warning-color);
-    stroke-width: 4;
-    filter: drop-shadow(0 0 15px var(--warning-color));
-    animation: pulse 1s infinite;
-}
-
-.timeline-commit-circle.merge {
-    filter: drop-shadow(0 2px 6px rgba(0, 123, 255, 0.4));
-}
-
-.timeline-commit-circle.release {
-    filter: drop-shadow(0 2px 6px rgba(40, 167, 69, 0.4));
-}
-
-.timeline-commit-circle.hotfix {
-    filter: drop-shadow(0 2px 6px rgba(220, 53, 69, 0.4));
-}
-
-.timeline-connection {
-    stroke-dasharray: 3, 3;
-    opacity: 0.4;
-    stroke-width: 2;
-}
-
-.timeline-commit-label {
-    font-size: 9px;
-    font-weight: bold;
-    fill: var(--bs-gray-700);
-    pointer-events: none;
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
-}
-
-.timeline-branch-label {
-    font-size: 10px;
-    font-weight: bold;
-    text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
-}
-
-.timeline-axis-labels text {
-    font-size: 11px;
-    fill: var(--bs-gray-600);
-}
-
-/* Timeline Tooltip */
-.timeline-tooltip {
-    position: absolute;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 0.75rem;
-    border-radius: var(--border-radius);
-    font-size: 0.8rem;
-    line-height: 1.4;
-    pointer-events: none;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(4px);
-    max-width: 250px;
-}
-
-.timeline-tooltip .fw-bold {
-    color: var(--bs-white);
-    margin-bottom: 0.5rem;
-    font-size: 0.9rem;
-}
-
-.timeline-tooltip .small {
-    opacity: 0.9;
-}
-
-.timeline-tooltip i {
-    width: 12px;
-    margin-right: 0.25rem;
-    opacity: 0.7;
-}
-
-/* 3D Visualization Enhancements */
-/* Visualización 3D adaptativa según estado del timeline */
-.visualization-container {
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-    border-radius: var(--border-radius-lg);
-    overflow: hidden;
-    box-shadow: var(--shadow-xl);
-    position: relative;
-    min-height: 600px;
-    width: 100%;
-    display: block !important;
-    transition: height 0.3s ease; /* Animación suave cuando cambie el timeline */
-}
-
-/* Contenedor de Three.js adaptativo */
-.three-container {
-    height: 700px; /* Altura por defecto cuando timeline está compacto */
-    min-height: 500px;
-    transition: height 0.3s ease;
-    position: relative;
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-    border-radius: 0.5rem;
-    overflow: hidden;
-}
-
-/* Cuando el timeline está expandido, reducir altura del contenedor 3D */
-.timeline-container.expanded ~ .three-container,
-body:has(.timeline-container.expanded) .three-container {
-    height: 550px; /* Menos espacio cuando timeline está expandido */
-}
-
-/* Asegurar que el canvas de Three.js se ajuste al contenedor */
-.three-container canvas {
-    width: 100% !important;
-    height: 100% !important;
-    display: block !important;
-}
-
-/* Asegurar que el canvas de Three.js sea visible */
-.visualization-container canvas {
-    display: block !important;
-    width: 100% !important;
-    height: 100% !important;
-    position: absolute !important;
-    top: 0 !important;
-    left: 0 !important;
-    z-index: 1 !important;
-}
-
-.visualization-container::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: var(--primary-gradient);
-    z-index: 1;
-}
-
-/* Info Tooltip for 3D */
-.info-tooltip {
-    position: absolute;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 0.75rem;
-    border-radius: var(--border-radius);
-    font-size: 0.8rem;
-    line-height: 1.4;
-    pointer-events: none;
-    z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(4px);
-    max-width: 280px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Loading States */
-.timeline-loading {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 200px;
-    color: var(--bs-gray-600);
-}
-
-.timeline-loading i {
-    animation: spin 1s linear infinite;
-    margin-right: 0.5rem;
-}
-
-/* Responsive Timeline */
-@media (max-width: 768px) {
-    .timeline-main-container {
-        padding: 0.75rem;
-    }
-    
-    .timeline-controls {
-        flex-direction: column;
-        gap: 0.5rem;
-    }
-    
-    .timeline-left-controls,
-    .timeline-right-controls {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.25rem;
-    }
-    
-    .timeline-svg-container {
-        margin: 0 -0.75rem;
-        border-radius: 0;
-        border-left: none;
-        border-right: none;
-    }
-    
-    .timeline-stats .row {
-        --bs-gutter-x: 0.5rem;
-    }
-    
-    .timeline-tooltip {
-        font-size: 0.75rem;
-        padding: 0.5rem;
-        max-width: 200px;
-    }
-}
-
-@media (max-width: 576px) {
-    .timeline-height {
-        height: 200px;
-    }
-    
-    .timeline-commit-circle {
-        stroke-width: 1;
-    }
-    
-    .timeline-commit-label {
-        font-size: 8px;
-    }
-    
-    .timeline-branch-label {
-        font-size: 9px;
-    }
-}
-
-/* Dark Mode Support */
-@media (prefers-color-scheme: dark) {
-    .timeline-main-container {
-        background: var(--bs-gray-900);
-        color: var(--bs-gray-100);
-    }
-    
-    .timeline-svg-container {
-        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-        border-color: var(--bs-gray-700);
-    }
-    
-    .timeline-controls {
-        background: var(--bs-gray-800);
-        border-color: var(--bs-gray-700);
-    }
-    
-    .timeline-stats {
-        background: var(--bs-gray-900);
-        border-color: var(--bs-gray-700);
-    }
-    
-    .timeline-stats .border {
-        background: var(--bs-gray-800);
-        border-color: var(--bs-gray-600) !important;
-    }
-    
-    .timeline-legend {
-        background: var(--bs-gray-800);
-        border-color: var(--bs-gray-700);
-    }
-    
-    .timeline-commit-circle {
-        stroke: var(--bs-gray-800);
-    }
-    
-    .timeline-axis-labels text {
-        fill: var(--bs-gray-400);
-    }
-    
-    .timeline-commit-label,
-    .timeline-branch-label {
-        fill: var(--bs-gray-300);
-        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
-    }
-}
-
-/* Animations */
-@keyframes pulse {
-    0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 0.7;
-        transform: scale(1.1);
-    }
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.timeline-main-container {
-    animation: fadeInUp 0.5s ease-out;
-}
-
-/* Enhanced Git Graph Styles */
-.git-graph-node {
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.git-graph-node:hover {
-    filter: brightness(1.2);
-}
-
-.git-graph-connection {
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
-}
-
-.git-graph-connection:hover {
-    opacity: 1;
-}
-
-.git-graph-label {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(4px);
-    border-radius: 4px;
-    padding: 2px 6px;
-    font-size: 10px;
-    font-weight: 600;
-}
-
-/* Full Screen Timeline */
-.timeline-container:-webkit-full-screen {
-    background: var(--bs-white);
-    padding: 2rem;
-}
-
-.timeline-container:-moz-full-screen {
-    background: var(--bs-white);
-    padding: 2rem;
-}
-
-.timeline-container:fullscreen {
-    background: var(--bs-white);
-    padding: 2rem;
-}
-
-/* Estilos para filtros de tecnología */
-.tech-pill {
-    margin: 0.25rem;
-    padding: 0.375rem 0.75rem;
-    border-radius: 50px;
-    font-size: 0.875rem;
-    transition: all 0.3s ease;
-    white-space: nowrap;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.tech-pill:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-
-.tech-pill.active {
-    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-    border-color: #0056b3;
-    color: white;
-    font-weight: 600;
-}
-
-.tech-pill i {
-    font-size: 0.75rem;
-}
-
-/* Estilos para el botón de toggle */
-#toggle-technologies {
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-    border: 1px solid #dee2e6;
-    color: #6c757d;
-    font-weight: 500;
-    transition: all 0.3s ease;
-}
-
-#toggle-technologies:hover {
-    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-    border-color: #adb5bd;
-    color: #495057;
-    transform: translateY(-1px);
-}
-
-/* Contenedor de filtros */
-.filters-container {
-    max-height: 120px;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
-    margin-bottom: 1rem;
-}
-
-.filters-container.expanded {
-    max-height: none;
-}
-
-/* Espaciado entre grupos de filtros */
-.tech-filters-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
-}
-
-/* Animación para el toggle */
-.tech-pill.toggle-btn {
-    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
-    border-color: #495057;
-    color: white;
-    font-weight: 500;
-}
-
-.tech-pill.toggle-btn:hover {
-    background: linear-gradient(135deg, #495057 0%, #343a40 100%);
-    border-color: #343a40;
-    transform: translateY(-1px);
-}
-
-/* Vista por categorías de tecnologías */
-.tech-category-group {
-    background: rgba(102, 126, 234, 0.05);
-    border-left: 3px solid rgba(102, 126, 234, 0.3);
-    padding: 0.75rem;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    margin-bottom: 0.5rem;
-}
-
-.tech-category-group:hover {
-    background: rgba(102, 126, 234, 0.08);
-    border-left-color: rgba(102, 126, 234, 0.6);
-}
-
-.tech-category-group small.fw-bold {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #667eea;
-}
-
-/* Botón flotante de CV */
-.cv-action-button {
-    position: fixed;
-    bottom: 30px;
-    right: 30px;
-    z-index: 1000;
-}
-
-.cv-action-button button {
-    border-radius: 50px;
-    padding: 15px 30px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-    animation: pulse-subtle 2s ease-in-out infinite;
-}
-
-.cv-action-button button:hover {
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 15px 40px rgba(40, 167, 69, 0.4) !important;
-}
-
-@keyframes pulse-subtle {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.02); }
-}
-
-/* Badge para topics */
-.tech-badge {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 12px;
-    background: rgba(13, 110, 253, 0.1);
-    color: #0d6efd;
-    border: 1px solid rgba(13, 110, 253, 0.2);
-    font-weight: 500;
-}
-
-/* Responsive design para filtros */
-@media (max-width: 768px) {
     .tech-pill {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-        margin: 0.125rem;
-    }
-    
-    .tech-pill i {
-        font-size: 0.65rem;
-    }
-    
-    .filters-container {
-        max-height: 100px;
-    }
-}
-
-/* Estilos para visualización 3D - Optimizado con más altura */
-.three-container {
-    position: relative;
-    width: 100%;
-    height: 750px; /* Aumentado de 600px */
-    min-height: 650px; /* Aumentado de 500px */
-    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-    border-radius: 0.5rem;
-    overflow: hidden;
-}
-
-.three-container canvas {
-    display: block;
-    width: 100% !important;
-    height: 100% !important;
-}
-
-/* Controles flotantes de zoom */
-.zoom-controls {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.zoom-controls .btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    background: rgba(255, 255, 255, 0.9);
-    border: none;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    transition: all 0.3s ease;
-}
-
-.zoom-controls .btn:hover {
-    background: rgba(255, 255, 255, 1);
-    transform: scale(1.1);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
-
-/* Panel de información de commit */
-.commit-info-panel {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    max-width: 300px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 0.5rem;
-    padding: 1rem;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    z-index: 1000;
-    display: none;
-    backdrop-filter: blur(10px);
-}
-
-.commit-info-header {
-    display: flex;
-    justify-content: between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.commit-info-header strong {
-    color: #0d6efd;
-    font-size: 0.9rem;
-}
-
-/* Instrucciones de interacción */
-.interaction-help {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    z-index: 1000;
-}
-
-.help-content {
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.85rem;
-    backdrop-filter: blur(10px);
-}
-
-/* Estado vacío */
-#empty-state {
-    z-index: 100;
-    pointer-events: none;
-}
-
-/* Timeline container - Optimizado con mejor contraste */
-.timeline-container {
-    position: relative;
-    width: 100%;
-    height: 350px; /* Reducido de 400px para dar más espacio arriba */
-    min-height: 250px; /* Reducido de 300px */
-    background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%); /* Tema oscuro con mejor contraste */
-    border-radius: 0.5rem;
-    overflow-y: auto; /* Cambiar de hidden a auto para permitir scroll */
-    overflow-x: hidden;
-    border: 1px solid rgba(0, 212, 255, 0.3); /* Borde cyan más visible */
-    color: #ffffff !important; /* Texto blanco forzado */
-    z-index: 1; /* Asegurar que esté visible */
-    /* Asegurar que el contenido sea visible */
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-/* Responsive para visualización */
-@media (max-width: 768px) {
-    .three-container {
-        height: 400px;
-        min-height: 350px;
-    }
-    
-    .timeline-container {
-        height: 300px;
-        min-height: 250px;
-    }
-    
-    .zoom-controls {
-        top: 10px;
-        right: 10px;
-    }
-    
-    .zoom-controls .btn {
-        width: 35px;
-        height: 35px;
+        padding: 0.25rem 0.6rem;
         font-size: 0.8rem;
     }
     
-    .commit-info-panel {
-        max-width: 250px;
-        padding: 0.75rem;
-        font-size: 0.85rem;
-    }
-    
-    .interaction-help {
-        bottom: 10px;
-        left: 10px;
-    }
-    
-    .help-content {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.75rem;
-    }
+    .navbar-brand span { display: none; } /* Solo logo en móvil pequeño */
+    .navbar-brand i { font-size: 1.5rem; }
 }
-
-/* Estilos para mejorar contraste en alertas y botones */
-.alert {
-    color: #212529 !important;
-}
-
-.alert.alert-warning {
-    background-color: #fff3cd;
-    border-color: #ffecb5;
-    color: #664d03 !important;
-}
-
-.alert.alert-danger {
-    background-color: #f8d7da;
-    border-color: #f5c2c7;
-    color: #721c24 !important;
-}
-
-.alert.alert-info {
-    background-color: #d1ecf1;
-    border-color: #bee5eb;
-    color: #055160 !important;
-}
-
-.alert.alert-success {
-    background-color: #d1e7dd;
-    border-color: #badbcc;
-    color: #0f5132 !important;
-}
-
-/* Mejorar contraste en botones del panel de análisis */
-.btn-outline-secondary {
-    color: #6c757d;
-    border-color: #6c757d;
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.btn-outline-secondary:hover {
-    color: #fff;
-    background-color: #6c757d;
-    border-color: #6c757d;
-}
-
-.btn-outline-info {
-    color: #0dcaf0;
-    border-color: #0dcaf0;
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-.btn-outline-info:hover {
-    color: #000;
-    background-color: #0dcaf0;
-    border-color: #0dcaf0;
-}
-
-/* Estilos específicos para el panel de repositorio seleccionado */
-#selected-repo-panel .btn-outline-secondary {
-    color: #ffffff;
-    border-color: #6c757d;
-    background-color: rgba(108, 117, 125, 0.2);
-}
-
-#selected-repo-panel .btn-outline-secondary:hover {
-    color: #ffffff;
-    background-color: #6c757d;
-    border-color: #6c757d;
-}
-
-#selected-repo-panel .btn-outline-info {
-    color: #ffffff;
-    border-color: #0dcaf0;
-    background-color: rgba(13, 202, 240, 0.2);
-}
-
-#selected-repo-panel .btn-outline-info:hover {
-    color: #000000;
-    background-color: #0dcaf0;
-    border-color: #0dcaf0;
-}
-
-/* Estilos para tooltips mejorados */
-.info-tooltip {
-    position: absolute;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 0.9rem;
-    line-height: 1.4;
-    max-width: 300px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    z-index: 10000;
-    pointer-events: none;
-}
-
-.info-tooltip strong {
-    color: #00d4ff;
-}
-
-/* Estilos para timeline mejorados con mejor contraste */
-.timeline-content {
-    max-height: 280px; /* Aumentado para aprovechar más espacio */
-    overflow-y: auto;
-    color: #ffffff !important; /* Texto blanco forzado */
-    padding: 15px; /* Más padding */
-}
-
-.timeline-header {
-    color: #ffffff !important;
-    border-bottom: 1px solid rgba(0, 212, 255, 0.3);
-    padding-bottom: 10px;
-    margin-bottom: 15px;
-}
-
-.timeline-header h6 {
-    color: #00d4ff !important; /* Cyan para títulos */
-    font-weight: 600;
-}
-
-.timeline-header small {
-    color: #b3d9ff !important; /* Cyan claro para subtítulos */
-}
-
-.timeline-items {
-    gap: 8px;
-}
-
-.timeline-item {
-    background: rgba(52, 73, 94, 0.6) !important; /* Fondo semitransparente */
-    border: 1px solid rgba(0, 212, 255, 0.2);
-    color: #ffffff !important;
-    transition: all 0.2s ease;
-    border-radius: 8px;
-}
-
-.timeline-item:hover {
-    background: rgba(0, 212, 255, 0.2) !important;
-    transform: translateX(4px);
-    border-color: rgba(0, 212, 255, 0.5);
-    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.2);
-}
-
-.timeline-item .timeline-icon {
-    min-width: 35px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.timeline-item .timeline-icon i {
-    color: #00d4ff !important;
-    font-size: 1.2em;
-}
-
-.timeline-item strong {
-    color: #ffffff !important;
-    font-size: 0.9rem;
-}
-
-.timeline-item .small {
-    color: #b3d9ff !important; /* Cyan claro para metadatos */
-}
-
-.timeline-item code {
-    background: rgba(0, 212, 255, 0.2) !important;
-    color: #00d4ff !important;
-    border: 1px solid rgba(0, 212, 255, 0.3);
-    padding: 2px 6px;
-    border-radius: 4px;
-}
-
-.timeline-footer {
-    color: #b3d9ff !important;
-    border-top: 1px solid rgba(0, 212, 255, 0.3);
-    padding-top: 10px;
-}
-
-.timeline-footer small {
-    color: #b3d9ff !important;
-}
-
-/* Estado vacío del timeline */
-#timeline-empty-state {
-    color: #b3d9ff !important;
-}
-
-#timeline-empty-state i {
-    color: rgba(0, 212, 255, 0.4) !important;
-}
-
-#timeline-empty-state h5 {
-    color: #00d4ff !important;
-}
-
-#timeline-empty-state p {
-    color: #b3d9ff !important;
-}
-
-/* Sobreescribir estilos de Bootstrap que pueden causar problemas */
-.timeline-container .text-white {
-    color: #ffffff !important;
-}
-
-.timeline-container .text-muted {
-    color: #b3d9ff !important;
-}
-
-.timeline-container .text-info {
-    color: #00d4ff !important;
-}
-
-/* Estilos de fuerza bruta para asegurar visibilidad del timeline */
-.timeline-container * {
-    color: inherit !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-}
-
-/* Debug temporal - bordes para ver elementos */
-.timeline-container[data-debug="true"] .timeline-content {
-    border: 2px solid red !important;
-    background: rgba(255, 0, 0, 0.1) !important;
-}
-
-.timeline-container[data-debug="true"] .timeline-item {
-    border: 1px solid yellow !important;
-    background: rgba(255, 255, 0, 0.1) !important;
-}
-
-.timeline-container[data-debug="true"] .timeline-header {
-    border: 2px solid green !important;
-    background: rgba(0, 255, 0, 0.1) !important;
-}
-
-/* Scrollbar personalizado para timeline */
-.timeline-content::-webkit-scrollbar {
-    width: 6px;
-}
-
-.timeline-content::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
-}
-
-.timeline-content::-webkit-scrollbar-thumb {
-    background: rgba(0, 212, 255, 0.5);
-    border-radius: 3px;
-}
-
-.timeline-content::-webkit-scrollbar-thumb:hover {
-    background: rgba(0, 212, 255, 0.7);
-}
-
-/* Animaciones sutiles */
-.timeline-item {
-    transition: all 0.2s ease;
-}
-
-.commit-info-panel {
-    backdrop-filter: blur(10px);
-    background: rgba(0, 0, 0, 0.8) !important;
-}
-
-/* Efectos de glow para nodos destacados */
-@keyframes nodeGlow {
-    0%, 100% { 
-        filter: brightness(1); 
-    }
-    50% { 
-        filter: brightness(1.5); 
-    }
-}
-
-.node-highlighted {
-    animation: nodeGlow 2s ease-in-out infinite;
-}
-
-/* ================================
-   SISTEMA DE VISTAS ALTERNAS
-   ================================ */
-
-/* Botones de toggle de vista */
-.view-toggle-btn {
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-    border-radius: 8px !important;
-    padding: 8px 16px !important;
-}
-
-.view-toggle-btn:not(.active) {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(255, 255, 255, 0.2) !important;
-    color: rgba(255, 255, 255, 0.7) !important;
-}
-
-.view-toggle-btn.active {
-    background: var(--primary-color) !important;
-    border-color: var(--primary-color) !important;
-    color: #ffffff !important;
-    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3) !important;
-}
-
-.view-toggle-btn:hover:not(.active) {
-    background: rgba(255, 255, 255, 0.2) !important;
-    border-color: rgba(255, 255, 255, 0.4) !important;
-    color: #ffffff !important;
-    transform: translateY(-1px);
-}
-
-/* Controles contextuales */
-.view-controls {
-    display: flex;
-    gap: 0.5rem;
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    align-items: center;
-}
-
-.view-controls.hidden {
-    opacity: 0;
-    transform: translateX(10px);
-    pointer-events: none;
-}
-
-/* Asegurar que los controles no se solapen */
-.view-controls-3d,
-.view-controls-timeline {
-    display: none; /* Por defecto ocultos, se muestran via JS */
-}
-
-/* Contenedor de vistas */
-.analysis-view {
-    display: none;
-    width: 100%;
-    height: 100%;
-    opacity: 0;
-    transition: opacity 0.3s ease, transform 0.3s ease;
-    transform: translateY(10px);
-}
-
-.analysis-view.active {
-    display: block;
-    opacity: 1;
-    transform: translateY(0);
-}
-
-/* Contenedores de altura completa optimizados para timeline */
-.full-height-container {
-    height: 100%; /* Usar altura completa del contenedor padre */
-    min-height: 75vh; /* Altura mínima más generosa */
-    width: 100%;
-    position: relative;
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-    border-radius: 0.375rem;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-}
-
-/* Timeline en vista completa optimizada */
-.timeline-full-view {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    min-height: 0; /* Permitir shrinking en flex containers */
-}
-
-.timeline-container-full {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    background: linear-gradient(135deg, #1a1d29 0%, #2d3748 100%);
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    min-height: 0; /* Esencial para flex containers anidados */
-}
-
-.timeline-header {
-    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
-    color: white;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-}
-
-.timeline-header h4 {
-    font-weight: 600;
-    margin: 0;
-}
-
-.timeline-commits-container {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    overflow-x: hidden;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
-    min-height: 0; /* Permitir que flex controle el tamaño */
-    max-height: none !important; /* Sin limitaciones de altura máxima */
-    scroll-behavior: smooth; /* Scroll suave para mejor UX */
-    overscroll-behavior: contain; /* Evitar scroll propagation */
-}
-
-.timeline-commits-container::-webkit-scrollbar {
-    width: 8px;
-}
-
-.timeline-commits-container::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
-}
-
-.timeline-commits-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
-}
-
-.timeline-commits-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-.timeline-commit-item {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    transition: all 0.3s ease;
-    margin-bottom: 12px;
-}
-
-.timeline-commit-item:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(66, 153, 225, 0.5);
-    transform: translateX(8px);
-    box-shadow: 0 8px 25px rgba(66, 153, 225, 0.2);
-}
-
-.timeline-commit-index {
-    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%) !important;
-    box-shadow: 0 4px 12px rgba(66, 153, 225, 0.3);
-    font-size: 14px;
-    font-weight: 700;
-}
-
-.timeline-commit-content {
-    padding-left: 12px;
-}
-
-.timeline-commit-message strong {
-    font-size: 16px;
-    line-height: 1.4;
-    color: #ffffff !important;
-}
-
-.timeline-commit-stats small {
-    padding: 4px 8px;
-    border-radius: 6px;
-    background: rgba(255, 255, 255, 0.1);
-    margin-right: 8px;
-}
-
-.timeline-pagination {
-    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
-    border-top: 2px solid rgba(255, 255, 255, 0.1);
-    color: white;
-}
-
-.timeline-pagination .btn {
-    border-color: rgba(255, 255, 255, 0.2);
-    color: white;
-}
-
-.timeline-pagination .btn:hover {
-    background-color: rgba(66, 153, 225, 0.2);
-    border-color: #4299e1;
-}
-
-.timeline-pagination .btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.timeline-pagination .form-control,
-.timeline-pagination .form-select {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: white;
-}
-
-.timeline-pagination .form-control:focus,
-.timeline-pagination .form-select:focus {
-    background-color: rgba(255, 255, 255, 0.15);
-    border-color: #4299e1;
-    box-shadow: 0 0 0 0.2rem rgba(66, 153, 225, 0.25);
-    color: white;
-}
-
-.timeline-pagination .form-select option {
-    background-color: #2d3748;
-    color: white;
-}
-
-.timeline-page-info {
-    font-size: 14px;
-    opacity: 0.9;
-}
-
-.timeline-nav-controls {
-    align-items: center;
-}
-
-.timeline-nav-controls .btn-sm {
-    padding: 6px 12px;
-}
-
-.timeline-nav-controls input,
-.timeline-nav-controls select {
-    font-size: 14px;
-}
-
-/* Estadísticas del timeline */
-.timeline-stats-footer {
-    background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.timeline-stats-footer .btn {
-    color: rgba(255, 255, 255, 0.8);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-.timeline-stats-footer .btn:hover {
-    color: white;
-    background-color: rgba(255, 255, 255, 0.1);
-}
-
-/* Animaciones para las transiciones entre commits */
-@keyframes slideInCommit {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-.timeline-commit-item {
-    animation: slideInCommit 0.3s ease-out;
-}
-
-.timeline-commit-item:nth-child(odd) {
-    animation-delay: 0.1s;
-}
-
-.timeline-commit-item:nth-child(even) {
-    animation-delay: 0.2s;
-}
-
-/* Optimizaciones flexibles para el timeline en vista completa */
-.analysis-view.active .timeline-full-view {
-    height: 100%; /* Usar toda la altura del contenedor padre */
-    flex: 1 1 auto;
-    min-height: 0;
-}
-
-.analysis-view.active .timeline-container-full {
-    height: 100%;
-    flex: 1 1 auto;
-    min-height: 0; /* Permitir flexbox control */
-}
-
-.analysis-view.active .timeline-commits-container {
-    flex: 1 1 auto; /* Usar todo el espacio disponible */
-    min-height: 0; /* Sin altura mínima fija */
-}
-
-/* Estados responsivos */
-@media (max-width: 768px) {
-    .timeline-header h4 {
-        font-size: 18px;
-    }
-    
-    .timeline-commit-item {
-        padding: 16px 12px;
-    }
-    
-    .timeline-commit-index {
-        min-width: 35px;
-        height: 35px;
-        font-size: 12px;
-    }
-    
-    .timeline-commit-message strong {
-        font-size: 14px;
-    }
-    
-    .timeline-pagination {
-        flex-direction: column;
-        gap: 12px;
-        text-align: center;
-    }
-    
-    .timeline-nav-controls {
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-    
-    /* Optimizaciones móviles flexibles */
-    .analysis-view.active .timeline-full-view {
-        height: 100%;
-        flex: 1 1 auto;
-    }
-    
-    .analysis-view.active .timeline-commits-container {
-        flex: 1 1 auto;
-        min-height: 0;
-    }
-}
-
-@media (max-width: 576px) {
-    .timeline-commits-container {
-        padding: 12px;
-    }
-    
-    .timeline-commit-item {
-        margin-bottom: 8px;
-    }
-    
-    .timeline-nav-controls .btn-sm {
-        padding: 4px 8px;
-        font-size: 12px;
-    }
-    
-    .timeline-nav-controls input,
-    .timeline-nav-controls select {
-        font-size: 12px;
-        min-width: 60px;
-    }
-}
-
-/* Estados vacíos mejorados */
-#timeline-empty-state-full {
-    color: rgba(255, 255, 255, 0.7);
-}
-
-#timeline-empty-state-full i {
-    color: rgba(66, 153, 225, 0.3);
-}
-
-#timeline-empty-state-full .btn {
-    background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-#timeline-empty-state-full .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(66, 153, 225, 0.3);
-}
-
-/* Mejoras para la integración con el sistema de vistas */
-.analysis-view {
-    transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-.analysis-view:not(.active) {
-    opacity: 0;
-    transform: translateY(20px);
-    pointer-events: none;
-}
-
-.analysis-view.active {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: all;
-}
-
-/* Controles contextuales específicos del timeline */
-.view-controls-timeline {
-    display: none;
-}
-
-.view-controls-timeline.active {
-    display: flex;
-}
-
-/* Loading state para el timeline */
-.timeline-loading {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 200px;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.timeline-loading .spinner-border {
-    color: #4299e1;
-}
-
-.timeline-loading-text {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 16px;
-}
-
-/* Mejoras adicionales para maximizar espacio del timeline */
-.timeline-container-full {
-    max-height: none !important; /* Eliminar todas las restricciones de altura */
-}
-
-.timeline-commits-container {
-    padding: 16px !important; /* Padding más generoso */
-}
-
-.timeline-commit-item {
-    margin-bottom: 8px !important; /* Espaciado más compacto entre commits */
-    padding: 12px 16px !important; /* Padding interno optimizado */
-}
-
-/* Asegurar que la vista del timeline use toda la altura disponible */
-#view-timeline.analysis-view.active {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    flex: 1 1 auto;
-}
-
-#view-timeline.analysis-view.active .full-height-container {
-    flex: 1 1 auto;
-    height: 100%;
-    min-height: 0; /* Permitir control completo por flexbox */
-}
-
-/* Optimizar la paginación para no ocupar demasiado espacio */
-.timeline-pagination {
-    flex-shrink: 0; /* No se encoge */
-    min-height: 60px; /* Altura mínima controlada */
-}
-
-/* Hacer que la lista de commits ocupe el máximo espacio disponible */
-.timeline-commits-container {
-    flex: 1 1 auto; /* Crecer y encogerse según el espacio disponible */
-    overflow-y: auto;
-    overflow-x: hidden;
-}
-
-/* Asegurar que el card-body del contenedor padre también use flexbox */
-.analysis-view.active .card-body {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    padding: 0; /* Remover padding para aprovechar todo el espacio */
-}
-
-/* Eliminar overflow oculto que puede causar problemas de scroll */
-.analysis-view.active .full-height-container {
-    overflow: visible; /* Permitir que el scroll sea manejado por elementos hijos */
-}
-
-/* Reglas específicas para el sistema de análisis simplificado */
-.timeline-commits-container {
-    /* Asegurar que el contenedor de commits use el espacio disponible correctamente */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-}
-
-.timeline-commits-container::-webkit-scrollbar {
-    width: 8px;
-}
-
-.timeline-commits-container::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-}
-
-.timeline-commits-container::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 4px;
-}
-
-.timeline-commits-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
-}
-
-/* Optimizaciones para commits en el sistema simplificado */
-.timeline-commit-item[data-commit-hash] {
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.2s ease;
-}
-
-.timeline-commit-item[data-commit-hash]:hover {
-    background: rgba(255, 255, 255, 0.1) !important;
-    border-color: rgba(66, 153, 225, 0.5);
-    transform: translateX(4px);
-}
-
-/* Asegurar que el timeline header no cause problemas de altura */
-.timeline-header {
-    flex-shrink: 0; /* El header no debe encogerse */
-}
-
-/* Asegurar que la paginación no cause problemas de altura */
-.timeline-pagination {
-    flex-shrink: 0; /* La paginación no debe encogerse */
-}
-
-/* ===========================================
-   SOLUCIÓN LIMPIA: Timeline con CSS Grid Automático
-   =========================================== */
-
-/* Timeline con CSS Grid para aprovechamiento automático del espacio */
-.timeline-auto-height {
-    display: grid;
-    grid-template-rows: auto 1fr auto; /* Header - Content flexible - Footer */
-    height: 100vh; /* Toda la altura del viewport */
-    max-height: calc(100vh - 140px); /* Restar navbar y padding */
-}
-
-.timeline-auto-height .timeline-header {
-    grid-row: 1;
-    flex-shrink: 0;
-}
-
-.timeline-auto-height .timeline-commits-container {
-    grid-row: 2;
-    overflow-y: auto;
-    min-height: 0; /* Importante para Grid */
-}
-
-.timeline-auto-height .timeline-pagination {
-    grid-row: 3;
-    flex-shrink: 0;
-}
-
-/* Alternative: Using modern CSS Container Queries (si el navegador lo soporta) */
-@container (min-height: 400px) {
-    .timeline-responsive {
-        height: 100cqh; /* Container Query Height */
-    }
-}
-
-/* Viewport-based solution (más compatible) */
-.timeline-viewport-optimized .timeline-commits-container {
-    height: calc(100vh - 200px); /* 200px para header, navbar, pagination */
-    max-height: calc(100vh - 200px);
-    min-height: 400px; /* Mínimo razonable */
-    overflow-y: auto;
-}
-
-/* ===========================================
-   SOLUCIÓN DINÁMICA: JavaScript-controlled
-   =========================================== */
-
-/* Clases que se aplicarán dinámicamente */
-.timeline-dynamic-height .timeline-commits-container {
-    height: var(--timeline-available-height, 60vh);
-    max-height: var(--timeline-available-height, 60vh);
-}
-
-/* ===========================================
-   SOLUCIÓN RESPONSIVE: Breakpoints inteligentes
-   =========================================== */
-
-/* Desktop: máximo aprovechamiento */
-@media (min-height: 800px) {
-    .timeline-commits-container {
-        height: calc(100vh - 180px) !important;
-        max-height: calc(100vh - 180px) !important;
-    }
-}
-
-/* Tablet: altura moderada */
-@media (min-height: 600px) and (max-height: 799px) {
-    .timeline-commits-container {
-        height: calc(100vh - 160px) !important;
-        max-height: calc(100vh - 160px) !important;
-    }
-}
-
-/* Mobile: altura mínima */
-@media (max-height: 599px) {
-    .timeline-commits-container {
-        height: calc(100vh - 140px) !important;
-        max-height: calc(100vh - 140px) !important;
-        min-height: 300px !important;
-    }
-}
-
-/* ===========================================
-   LIMPIEZA: Eliminar conflictos de CSS existentes
-   =========================================== */
-
-/* Resetear reglas conflictivas del timeline legacy */
-.analysis-view.active .timeline-commits-container {
-    /* Usar solo las nuevas reglas automáticas */
-    flex: 1 1 auto;
-    min-height: 0;
-    max-height: none; /* Se controlará por las reglas automáticas */
-}
-
-/* Asegurar que el contenedor padre coopere */
-.analysis-view.active .full-height-container {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-} 
