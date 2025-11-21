@@ -126,35 +126,59 @@
                             </div>
                         </div>
                         
-                        <h6 class="mb-3">Exportar CV como:</h6>
+                        <h6 class="mb-3">Opciones de Exportación & IA:</h6>
                         <div class="row g-3">
-                            <div class="col-md-4">
-                                <button class="btn btn-outline-primary w-100" onclick="window.exportCV('markdown')">
+                            <div class="col-6 col-md-3">
+                                <button class="btn btn-outline-primary w-100 h-100 py-3" onclick="window.exportCV('markdown')">
                                     <i class="fab fa-markdown fa-2x mb-2"></i>
-                                    <div>Markdown</div>
-                                    <small class="text-muted">Para GitHub</small>
+                                    <div class="fw-bold">Markdown</div>
+                                    <small class="text-muted d-block">GitHub Profile</small>
                                 </button>
                             </div>
-                            <div class="col-md-4">
-                                <button class="btn btn-outline-success w-100" onclick="window.exportCV('json')">
+                            <div class="col-6 col-md-3">
+                                <button class="btn btn-outline-success w-100 h-100 py-3" onclick="window.exportCV('json')">
                                     <i class="fas fa-code fa-2x mb-2"></i>
-                                    <div>JSON</div>
-                                    <small class="text-muted">Para APIs</small>
+                                    <div class="fw-bold">JSON</div>
+                                    <small class="text-muted d-block">API Data</small>
                                 </button>
                             </div>
-                            <div class="col-md-4">
-                                <button class="btn btn-outline-info w-100" onclick="window.exportCV('html')">
+                            <div class="col-6 col-md-3">
+                                <button class="btn btn-outline-info w-100 h-100 py-3" onclick="window.exportCV('html')">
                                     <i class="fas fa-globe fa-2x mb-2"></i>
-                                    <div>HTML</div>
-                                    <small class="text-muted">Para web</small>
+                                    <div class="fw-bold">HTML</div>
+                                    <small class="text-muted d-block">Web Portfolio</small>
+                                </button>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <button class="btn btn-outline-warning w-100 h-100 py-3" onclick="window.copyAIPrompt()">
+                                    <i class="fas fa-magic fa-2x mb-2"></i>
+                                    <div class="fw-bold">IA Prompt</div>
+                                    <small class="text-muted d-block">Para ChatGPT</small>
                                 </button>
                             </div>
                         </div>
                         
-                        <div class="alert alert-info mt-4 mb-0">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>Nota:</strong> Tu CV se genera instantáneamente sin hacer llamadas adicionales a GitHub.
-                            Eficiente y privado.
+                        <div class="mt-3 px-2">
+                            <div class="d-flex gap-3 justify-content-center">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="checkIncludeUrl" checked>
+                                    <label class="form-check-label small text-muted" for="checkIncludeUrl">Incluir URLs</label>
+                                </div>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="checkShowDate">
+                                    <label class="form-check-label small text-muted" for="checkShowDate">Fecha Creación</label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-light border mt-4 mb-0">
+                            <div class="d-flex">
+                                <i class="fas fa-robot text-warning mt-1 me-3"></i>
+                                <div>
+                                    <strong>Tip:</strong> Usa el botón "IA Prompt" para copiar un resumen estructurado de tu perfil. 
+                                    Pégalo en ChatGPT o Claude para obtener un resumen ejecutivo profesional redactado por IA.
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -186,8 +210,12 @@
             
             switch (format) {
                 case 'markdown':
+                    // Leer opciones
+                    const includeUrl = document.getElementById('checkIncludeUrl')?.checked ?? true;
+                    const showDate = document.getElementById('checkShowDate')?.checked ?? false;
+                    
                     // Llamar al backend para generar Markdown
-                    const mdResponse = await fetch('/api/cv/export/markdown', {
+                    const mdResponse = await fetch(`/api/cv/export/markdown?includeUrl=${includeUrl}&showFirstCommitDate=${showDate}`, {
                         credentials: 'include'
                     });
                     content = await mdResponse.text();
@@ -236,6 +264,23 @@
         }
     };
     
+    /**
+     * Copia el prompt optimizado para IA al portapapeles
+     */
+    window.copyAIPrompt = function() {
+        if (!generatedCV || !generatedCV.aiPrompt) {
+            showNotification('⚠️ El prompt de IA no está disponible en este CV.', 'warning');
+            return;
+        }
+        
+        navigator.clipboard.writeText(generatedCV.aiPrompt).then(() => {
+            showNotification('✨ Prompt copiado! Pégalo en ChatGPT/Claude para obtener tu resumen.', 'success');
+        }).catch(err => {
+            console.error('Error copiando al portapapeles:', err);
+            showNotification('❌ Error al copiar. Revisa permisos del navegador.', 'error');
+        });
+    };
+
     /**
      * Muestra una notificación
      */

@@ -52,6 +52,9 @@ class DashboardComponent extends BaseComponent {
             this.updateRepository(data);
         });
 
+        // Inyectar modales en el cuerpo del documento para persistencia
+        this.injectModals();
+
         // Estado inicial del componente
         this.setState({
             repositories: [],
@@ -92,7 +95,6 @@ class DashboardComponent extends BaseComponent {
             ${showWelcome && user ? this.renderWelcomeSection(user, stats) : ''}
             ${!user ? this.renderUnauthenticatedSection() : ''}
             ${user ? this.renderUnifiedRepositoriesSection(repositories, isLoading) : ''}
-            ${this.renderModals()}
         `;
     }
 
@@ -591,6 +593,24 @@ class DashboardComponent extends BaseComponent {
         return paginationHtml;
     }
 
+    injectModals() {
+        // Verificar si ya existen para no duplicar
+        if (document.getElementById('analyze-modal')) return;
+        
+        const modalsHtml = this.renderModals();
+        // Insertar al final del body para asegurar que estén por encima de todo y no se borren al renderizar
+        document.body.insertAdjacentHTML('beforeend', modalsHtml);
+        
+        // Bind events específicos del modal ya que está fuera del root element
+        const form = document.getElementById('analyze-form');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.handleAnalyzeSubmit(e.target);
+            });
+        }
+    }
+
     renderModals() {
         return `
             <!-- Modal para analizar repositorio -->
@@ -685,14 +705,6 @@ class DashboardComponent extends BaseComponent {
             if (e.target.id === 'sort-select') {
                     this.setState({ sortBy: e.target.value });
                     this.applyFilters();
-            }
-        });
-
-        // Formulario de análisis
-        this.element.addEventListener('submit', (e) => {
-            if (e.target.id === 'analyze-form') {
-                e.preventDefault();
-                this.handleAnalyzeSubmit(e.target);
             }
         });
     }
@@ -1010,8 +1022,20 @@ class DashboardComponent extends BaseComponent {
     }
 
     navigateToAnalysis(repo) {
+        // Feedback visual inmediato para evitar sensación de "congelado"
+        const btn = document.querySelector(`[data-repo="${repo}"]`);
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Cargando...';
+            btn.classList.add('disabled');
+            btn.disabled = true;
+        }
+
         this.stateManager.setState({ currentRepo: repo });
-        window.location.href = `/analysis?repo=${encodeURIComponent(repo)}`;
+        
+        // Pequeño delay para permitir que el UI se actualice antes de la navegación
+        requestAnimationFrame(() => {
+            window.location.href = `/analysis?repo=${encodeURIComponent(repo)}`;
+        });
     }
 
     showAnalyzeModal() {
@@ -1166,7 +1190,6 @@ class DashboardComponent extends BaseComponent {
             ${!user ? this.renderUnauthenticatedSection() : ''}
             ${user ? this.renderRepositoriesSection(repositories, isLoading) : ''}
             ${showFilters && user ? this.renderFiltersSection() : ''}
-            ${this.renderModals()}
         `;
     }
 
@@ -1209,6 +1232,10 @@ class DashboardComponent extends BaseComponent {
             timestamp: Date.now(),
             cleanupComplete: true
         });
+        
+        // Limpiar modales inyectados en body
+        const modal = document.getElementById('analyze-modal');
+        if (modal) modal.remove();
         
         super.destroy();
     }
