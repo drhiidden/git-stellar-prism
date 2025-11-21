@@ -15,7 +15,7 @@ import java.util.Map;
 @Service
 public class CVExportService {
 
-    public String generateMarkdown(TechnicalCV cv, TechnicalMetadata techMetadata) {
+    public String generateMarkdown(TechnicalCV cv, TechnicalMetadata techMetadata, boolean includeUrl, boolean showFirstCommitDate) {
         StringBuilder md = new StringBuilder();
         
         appendHeader(md, cv);
@@ -24,9 +24,66 @@ public class CVExportService {
         appendLanguages(md, techMetadata);
         appendFrameworks(md, techMetadata);
         appendCICD(md, techMetadata);
-        appendOpenSource(md, techMetadata);
+        appendProjects(md, cv, includeUrl, showFirstCommitDate);
+        
+        appendAIPromptSection(md);
         
         return md.toString();
+    }
+
+    private void appendProjects(StringBuilder md, TechnicalCV cv, boolean includeUrl, boolean showFirstCommitDate) {
+        if (cv.getProjects() != null && !cv.getProjects().isEmpty()) {
+            md.append("## 📁 Portafolio Completo de Proyectos\n\n");
+            cv.getProjects().forEach(p -> {
+                md.append("### ").append(p.getName());
+                if (p.getStars() != null && p.getStars() > 0) {
+                    md.append(" (⭐ ").append(p.getStars()).append(")");
+                }
+                md.append("\n");
+                
+                if (p.getDescription() != null && !p.getDescription().isEmpty()) {
+                    md.append(p.getDescription()).append("\n\n");
+                }
+                
+                if (p.getLanguages() != null && !p.getLanguages().isEmpty()) {
+                    md.append("- **Stack**: ").append(formatLanguageStats(p.getLanguages())).append("\n");
+                } else if (p.getLanguage() != null) {
+                    md.append("- **Lenguaje**: ").append(p.getLanguage()).append("\n");
+                }
+                
+                if (showFirstCommitDate && p.getCreatedAt() != null) {
+                    md.append("- 📅 **Primer Commit (aprox)**: ").append(p.getCreatedAt().substring(0, 10)).append("\n");
+                }
+
+                if (p.getTopics() != null && !p.getTopics().isEmpty()) {
+                    md.append("- **Tecnologías/Topics**: ").append(String.join(", ", p.getTopics())).append("\n");
+                }
+                
+                if (includeUrl && p.getUrl() != null) {
+                    md.append("- **Repositorio**: [").append(p.getUrl()).append("](").append(p.getUrl()).append(")\n");
+                }
+                md.append("\n");
+            });
+        }
+    }
+
+    private void appendAIPromptSection(StringBuilder md) {
+        md.append("\n---\n\n");
+        md.append("# 🤖 Generación de CV con IA\n\n");
+        md.append("> **Instrucciones**: Para obtener un CV optimizado, copia TODO el contenido de este archivo y pégalo en ChatGPT, Claude o Gemini junto con el siguiente prompt:\n\n");
+        md.append("```text\n");
+        md.append("ACTÚA COMO: Reclutador Técnico Senior y Experto en Redacción de CVs.\n\n");
+        md.append("CONTEXTO:\n");
+        md.append("La información proporcionada arriba es un extracto técnico detallado de todos mis repositorios de GitHub, incluyendo tecnologías, descripciones y arquitecturas detectadas.\n\n");
+        md.append("TAREA:\n");
+        md.append("Analiza profundamente la lista de proyectos y genera un CV Profesional con las siguientes secciones:\n");
+        md.append("1. RESUMEN EJECUTIVO: 2-3 párrafos potentes que sinteticen mi perfil, destacando mis tecnologías más usadas y patrones arquitectónicos recurrentes.\n");
+        md.append("2. EXPERIENCIA TÉCNICA DESTACADA: Selecciona los 4-5 proyectos más complejos/relevantes de la lista y descríbelos enfocándote en SOLUCIÓN TÉCNICA y LOGROS (usando verbos de acción).\n");
+        md.append("3. SKILLS MATRIX: Organiza mis habilidades técnicas (lenguajes, frameworks, herramientas) basándote en la frecuencia de uso en los proyectos.\n");
+        md.append("4. TÍTULO PROFESIONAL: Sugiere 3 posibles títulos para mi perfil (ej. Senior Java Backend Engineer).\n\n");
+        md.append("OBJETIVO:\n");
+        md.append("Crear un perfil atractivo para empresas de tecnología, demostrando capacidad técnica real basada en la evidencia del código.\n");
+        md.append("```\n");
     }
 
     private void appendHeader(StringBuilder md, TechnicalCV cv) {
@@ -93,19 +150,15 @@ public class CVExportService {
         }
     }
 
-    private void appendOpenSource(StringBuilder md, TechnicalMetadata techMetadata) {
-        if (!techMetadata.openSourceProjects().isEmpty()) {
-            md.append("## 🌟 Proyectos Open Source Destacados\n\n");
-            techMetadata.openSourceProjects().stream().limit(5).forEach(p -> {
-                md.append("### ").append(p.name()).append("\n");
-                md.append(p.description()).append("\n\n");
-                md.append("- ⭐ ").append(p.stars()).append(" Stars | 🔗 [Ver Repositorio](").append(p.url()).append(")\n");
-                if (p.topics() != null && !p.topics().isEmpty()) {
-                    md.append("- *Stack*: ").append(String.join(", ", p.topics().subList(0, Math.min(5, p.topics().size())))).append("\n");
-                }
-                md.append("\n");
-            });
-        }
+    private String formatLanguageStats(Map<String, Long> languages) {
+        long total = languages.values().stream().mapToLong(Long::longValue).sum();
+        if (total == 0) return "";
+        
+        return languages.entrySet().stream()
+            .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+            .limit(4)
+            .map(entry -> String.format("%s (%.1f%%)", entry.getKey(), (entry.getValue() * 100.0) / total))
+            .collect(java.util.stream.Collectors.joining(" • "));
     }
 
     public String generateHtmlPreview(TechnicalCV cv) {

@@ -549,26 +549,31 @@ public class GithubApiAdapter {
      */
     public Flux<Repository> getUserRepositories(Principal principal) {
         validateReadOnlyOperation("getUserRepositories"); // 🔒 Salvaguarda de seguridad
-        String url = "/user/repos?visibility=all&sort=updated&per_page=50";
-        log.info("🔍 GitHub API: GET {} (user repositories)", url);
         
-        return githubWebClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .path("/user/repos")
-                        .queryParam("visibility", "all")
-                        .queryParam("sort", "updated")
-                        .queryParam("per_page", "50")
-                        .build())
-                .header("Accept", "application/vnd.github.mercy-preview+json") // Para incluir topics
-                .attributes(clientRegistrationId("github"))
-                .retrieve()
-                .bodyToFlux(Map.class)
-                .map(githubApiResponseMapper::mapToRepository)
-                .doOnSubscribe(subscription -> 
-                    log.debug("Obteniendo repositorios del usuario autenticado"))
-                .doOnComplete(() -> log.info("✅ GitHub API: GET {} - Success (user repositories obtenidos)", url))
-                .doOnError(e -> log.error("❌ GitHub API: GET {} - Error: {}", 
-                                    url, e.getMessage()));
+        // Fetch pages 1 and 2 to cover up to 200 repos (User has ~133)
+        return Flux.range(1, 2)
+            .flatMap(page -> {
+                String url = "/user/repos?visibility=all&sort=updated&per_page=100&page=" + page;
+                log.info("🔍 GitHub API: GET {} (user repositories page {})", url, page);
+                
+                return githubWebClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/user/repos")
+                            .queryParam("visibility", "all")
+                            .queryParam("sort", "updated")
+                            .queryParam("per_page", "100")
+                            .queryParam("page", page)
+                            .build())
+                    .header("Accept", "application/vnd.github.mercy-preview+json") // Para incluir topics
+                    .attributes(clientRegistrationId("github"))
+                    .retrieve()
+                    .bodyToFlux(Map.class)
+                    .map(githubApiResponseMapper::mapToRepository)
+                    .doOnSubscribe(subscription -> 
+                        log.debug("Obteniendo repositorios del usuario autenticado (página {})", page))
+                    .doOnError(e -> log.warn("⚠️ GitHub API: Error fetching page {}: {}", page, e.getMessage()))
+                    .onErrorResume(e -> Flux.empty()); // Continue if a page fails (or is empty/404)
+            }, 2); // Concurrency 2
     }
 
     /**

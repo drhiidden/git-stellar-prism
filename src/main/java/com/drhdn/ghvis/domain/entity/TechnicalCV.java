@@ -65,6 +65,11 @@ public class TechnicalCV {
      * Estadísticas generales
      */
     private CVStatistics statistics;
+
+    /**
+     * Prompt optimizado para generar resumen con IA
+     */
+    private String aiPrompt;
     
     // ========== INNER CLASSES ==========
     
@@ -218,6 +223,7 @@ public class TechnicalCV {
         private Integer forks;
         private Integer watchers;
         private String language;
+        private Map<String, Long> languages;
         private List<ProjectTech> technologies;
         private List<String> topics;
         private String createdAt;

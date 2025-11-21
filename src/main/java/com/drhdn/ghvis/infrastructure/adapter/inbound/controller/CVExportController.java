@@ -66,11 +66,15 @@ public class CVExportController {
     }
 
     @GetMapping(value = "/export/markdown", produces = "text/markdown")
-    public Mono<ResponseEntity<String>> exportToMarkdown(Principal principal) {
+    public Mono<ResponseEntity<String>> exportToMarkdown(
+            @RequestParam(defaultValue = "true") boolean includeUrl,
+            @RequestParam(defaultValue = "false") boolean showFirstCommitDate,
+            Principal principal) {
         if (principal == null) return Mono.just(ResponseEntity.status(401).body("# Error\nUsuario no autenticado"));
 
         String username = principal.getName();
-        log.info("📄 Exportando CV a Markdown para usuario: {}", username);
+        log.info("📄 Exportando CV a Markdown para usuario: {} (includeUrl={}, showDate={})", 
+            username, includeUrl, showFirstCommitDate);
 
         return Mono.zip(
             cvService.generateCV(username, principal),
@@ -82,7 +86,7 @@ public class CVExportController {
             
             // Generamos metadata para el formateador
             var techMetadata = repositoryAnalyzer.generateTechnicalMetadata(repos);
-            String markdown = cvExportService.generateMarkdown(cv, techMetadata);
+            String markdown = cvExportService.generateMarkdown(cv, techMetadata, includeUrl, showFirstCommitDate);
             
             return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, 

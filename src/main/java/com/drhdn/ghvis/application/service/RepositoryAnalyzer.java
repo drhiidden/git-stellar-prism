@@ -100,7 +100,29 @@ public class RepositoryAnalyzer {
         Map.entry("monolith", "Monolithic Architecture"),
         Map.entry("serverless", "Serverless"),
         Map.entry("mvc", "MVC Pattern"),
-        Map.entry("mvvm", "MVVM Pattern")
+        Map.entry("mvvm", "MVVM Pattern"),
+        Map.entry("rest-api", "RESTful API"),
+        Map.entry("graphql", "GraphQL"),
+        Map.entry("soap", "SOAP"),
+        Map.entry("grpc", "gRPC"),
+        Map.entry("reactive", "Reactive Programming"),
+        Map.entry("solid", "SOLID Principles")
+    );
+
+    /**
+     * Herramientas CI/CD y DevOps
+     */
+    private static final Map<String, String> CICD_KEYWORDS = Map.ofEntries(
+        Map.entry("jenkins", "Jenkins"), Map.entry("github-actions", "GitHub Actions"),
+        Map.entry("gitlab-ci", "GitLab CI"), Map.entry("travis", "Travis CI"),
+        Map.entry("circleci", "CircleCI"), Map.entry("azure-pipelines", "Azure Pipelines"),
+        Map.entry("docker", "Docker"), Map.entry("kubernetes", "Kubernetes"),
+        Map.entry("k8s", "Kubernetes"), Map.entry("docker-compose", "Docker Compose"),
+        Map.entry("maven", "Maven"), Map.entry("gradle", "Gradle"),
+        Map.entry("ant", "Ant"), Map.entry("make", "Make"),
+        Map.entry("vercel", "Vercel"), Map.entry("heroku", "Heroku"),
+        Map.entry("netlify", "Netlify"), Map.entry("aws-codepipeline", "AWS CodePipeline"),
+        Map.entry("terraform", "Terraform"), Map.entry("ansible", "Ansible")
     );
 
     /**
@@ -136,11 +158,9 @@ public class RepositoryAnalyzer {
         Map<String, FrameworkStats> frameworkStats = new HashMap<>();
         
         repos.forEach(repo -> {
-            // Detectar desde topics
             analyzeTopics(repo, FRAMEWORK_MAPPINGS, frameworkStats);
-            
-            // Detectar desde descripción (simple keyword matching para frameworks importantes)
-            analyzeDescription(repo, FRAMEWORK_MAPPINGS, frameworkStats);
+            analyzeTextContent(repo.getDescription(), FRAMEWORK_MAPPINGS, frameworkStats, repo.getName());
+            analyzeTextContent(repo.getName(), FRAMEWORK_MAPPINGS, frameworkStats, repo.getName());
         });
         
         return frameworkStats;
@@ -151,15 +171,8 @@ public class RepositoryAnalyzer {
         
         repos.forEach(repo -> {
             analyzeTopics(repo, ARCHITECTURE_PATTERNS, archStats);
-            
-            // Búsqueda básica en descripción para arquitectura
-            String desc = repo.getDescription() != null ? repo.getDescription().toLowerCase() : "";
-            ARCHITECTURE_PATTERNS.forEach((key, value) -> {
-                if (desc.contains(key.replace("-", " ")) || desc.contains(value.toLowerCase())) {
-                    archStats.computeIfAbsent(value, k -> new FrameworkStats())
-                        .addRepository(repo.getName());
-                }
-            });
+            analyzeTextContent(repo.getDescription(), ARCHITECTURE_PATTERNS, archStats, repo.getName());
+            analyzeTextContent(repo.getName(), ARCHITECTURE_PATTERNS, archStats, repo.getName());
         });
         
         return archStats;
@@ -167,35 +180,11 @@ public class RepositoryAnalyzer {
     
     public Map<String, FrameworkStats> detectCICD(List<Repository> repos) {
         Map<String, FrameworkStats> cicdStats = new HashMap<>();
-        Map<String, String> cicdKeywords = Map.of(
-            "jenkins", "Jenkins", "github-actions", "GitHub Actions",
-            "gitlab-ci", "GitLab CI", "travis", "Travis CI",
-            "circleci", "CircleCI", "azure-pipelines", "Azure Pipelines"
-        );
         
         repos.forEach(repo -> {
-            // Detectar desde topics
-            if (repo.getTopics() != null) {
-                repo.getTopics().forEach(t -> {
-                    String match = cicdKeywords.get(t.toLowerCase());
-                    if (match != null) {
-                        cicdStats.computeIfAbsent(match, k -> new FrameworkStats())
-                            .addRepository(repo.getName());
-                    }
-                });
-            }
-            
-            // Detectar desde descripción (opcional, para consistencia con frameworks)
-            String desc = repo.getDescription();
-            if (desc != null) {
-                String lowerDesc = desc.toLowerCase();
-                cicdKeywords.forEach((key, value) -> {
-                    if (lowerDesc.contains(" " + key + " ") || lowerDesc.startsWith(key + " ") || lowerDesc.endsWith(" " + key)) {
-                         cicdStats.computeIfAbsent(value, k -> new FrameworkStats())
-                             .addRepository(repo.getName());
-                    }
-                });
-            }
+            analyzeTopics(repo, CICD_KEYWORDS, cicdStats);
+            analyzeTextContent(repo.getDescription(), CICD_KEYWORDS, cicdStats, repo.getName());
+            analyzeTextContent(repo.getName(), CICD_KEYWORDS, cicdStats, repo.getName());
         });
         return cicdStats;
     }
@@ -256,14 +245,19 @@ public class RepositoryAnalyzer {
         });
     }
 
-    private void analyzeDescription(Repository repo, Map<String, String> mappings, Map<String, FrameworkStats> stats) {
-        String desc = repo.getDescription();
-        if (desc == null) return;
-        String lowerDesc = desc.toLowerCase();
+    private void analyzeTextContent(String text, Map<String, String> mappings, Map<String, FrameworkStats> stats, String repoName) {
+        if (text == null || text.isEmpty()) return;
+        
+        // Normalizar: convertir a minúsculas y reemplazar separadores por espacios
+        String normalized = text.toLowerCase().replace("-", " ").replace("_", " ").replace(".", " ");
+        String padded = " " + normalized + " "; // Padding para búsqueda exacta de palabras
+        
         mappings.forEach((key, value) -> {
-            // Búsqueda simple de palabra completa para evitar falsos positivos
-            if (lowerDesc.contains(" " + key + " ") || lowerDesc.startsWith(key + " ") || lowerDesc.endsWith(" " + key)) {
-                 stats.computeIfAbsent(value, k -> new FrameworkStats()).addRepository(repo.getName());
+            // Buscar la clave tal cual (ej: "react") o con espacios en lugar de guiones (ej: "clean architecture")
+            String searchKey = key.toLowerCase().replace("-", " ");
+            
+            if (padded.contains(" " + searchKey + " ")) {
+                stats.computeIfAbsent(value, k -> new FrameworkStats()).addRepository(repoName);
             }
         });
     }

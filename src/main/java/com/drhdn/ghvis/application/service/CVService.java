@@ -75,11 +75,92 @@ public class CVService {
         // Analizar metadata técnica
         RepositoryAnalyzer.TechnicalMetadata metadata = repositoryAnalyzer.generateTechnicalMetadata(repos);
         
+        TechnicalCV.CVHeader header = buildHeader(user, metadata);
+        TechnicalCV.CVSummary summary = buildSummary(user, repos, metadata);
+        
         return TechnicalCV.builder()
             .metadata(buildMetadata(repos.size(), user, metadata))
-            .header(buildHeader(user, metadata))
-            .summary(buildSummary(user, repos, metadata))
+            .header(header)
+            .summary(summary)
+            .projects(mapProjects(repos))
+            .aiPrompt(generateAIPrompt(header, summary, metadata, repos))
             .build();
+    }
+    
+    private List<TechnicalCV.CVProject> mapProjects(List<Repository> repos) {
+        return repos.stream()
+            .sorted(Comparator.comparing(Repository::getStargazersCount).reversed())
+            .map(repo -> TechnicalCV.CVProject.builder()
+                .name(repo.getName())
+                .description(repo.getDescription())
+                .stars(repo.getStargazersCount())
+                .language(getPrimaryLanguage(repo))
+                .languages(repo.getLanguageDistribution())
+                .topics(repo.getTopics())
+                .url(repo.getUrl())
+                .updatedAt(repo.getUpdatedAt() != null ? repo.getUpdatedAt().toString() : null)
+                .createdAt(repo.getCreatedAt() != null ? repo.getCreatedAt().toString() : null)
+                .build())
+            .collect(Collectors.toList());
+    }
+    
+    private String generateAIPrompt(TechnicalCV.CVHeader header, TechnicalCV.CVSummary summary, RepositoryAnalyzer.TechnicalMetadata metadata, List<Repository> repos) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("[CONTEXTO]\n");
+        prompt.append(String.format("Soy %s (%s), un %s con %d años de experiencia activa.\n", 
+            header.getName() != null ? header.getName() : header.getUsername(), 
+            header.getUsername(), 
+            summary.getRole(), 
+            summary.getYearsActive()));
+        prompt.append("Busco generar un resumen ejecutivo profesional para mi CV y perfil de LinkedIn.\n\n");
+        
+        prompt.append("[PERFIL TÉCNICO]\n");
+        prompt.append("- Rol Inferido: ").append(summary.getRole()).append("\n");
+        prompt.append("- Tecnologías Principales: ").append(String.join(", ", summary.getPrimaryTechnologies())).append("\n");
+        
+        if (!metadata.architectures().isEmpty()) {
+            prompt.append("- Arquitecturas y Patrones: ").append(String.join(", ", metadata.architectures().keySet())).append("\n");
+        }
+        if (!metadata.cicdTools().isEmpty()) {
+            prompt.append("- Herramientas CI/CD: ").append(String.join(", ", metadata.cicdTools().keySet())).append("\n");
+        }
+        prompt.append("\n");
+        
+        prompt.append("[PROYECTOS DESTACADOS]\n");
+        // Ordenar por estrellas y tomar top 5
+        repos.stream()
+            .sorted(Comparator.comparing(Repository::getStargazersCount).reversed())
+            .limit(5)
+            .forEach(r -> {
+                prompt.append(String.format("- %s (⭐ %d): %s\n", r.getName(), r.getStargazersCount(), r.getDescription() != null ? r.getDescription() : "Sin descripción"));
+                
+                String lang = getPrimaryLanguage(r);
+                if (!"Desconocido".equals(lang)) {
+                    prompt.append(String.format("  Lenguaje: %s\n", lang));
+                }
+                
+                if (r.getTopics() != null && !r.getTopics().isEmpty()) prompt.append(String.format("  Topics: %s\n", String.join(", ", r.getTopics())));
+            });
+        prompt.append("\n");
+        
+        prompt.append("[TAREA]\n");
+        prompt.append("Actúa como un Reclutador Técnico Senior y redactor de CVs experto.\n");
+        prompt.append("1. Escribe un 'Resumen Profesional' de 2-3 párrafos que sintetice mi experiencia, destacando mis fortalezas técnicas y arquitectónicas.\n");
+        prompt.append("2. Genera una lista de 5 'Puntos Clave' (bullet points) con logros cuantificables o técnicos basados en mis proyectos.\n");
+        prompt.append("3. Sugiere un título profesional (Headline) impactante.\n");
+        prompt.append("4. Mantén un tono profesional, seguro y orientado a resultados.\n");
+        
+        return prompt.toString();
+    }
+    
+    private String getPrimaryLanguage(Repository repo) {
+        if (repo.getLanguageDistribution() == null || repo.getLanguageDistribution().isEmpty()) {
+            return "Desconocido";
+        }
+        return repo.getLanguageDistribution().entrySet().stream()
+            .max(Map.Entry.comparingByValue())
+            .map(Map.Entry::getKey)
+            .orElse("Desconocido");
     }
     
     private TechnicalCV.CVMetadata buildMetadata(int totalRepos, User user, RepositoryAnalyzer.TechnicalMetadata techMetadata) {
