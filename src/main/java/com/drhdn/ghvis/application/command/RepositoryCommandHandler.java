@@ -193,6 +193,20 @@ public class RepositoryCommandHandler {
                 log.debug("📦 Caché 'metadata' invalidado para: {}", username);
             }
             
+            // Caché de lenguajes
+            var languagesCache = cacheManager.getCache("languages");
+            if (languagesCache != null) {
+                languagesCache.evict("metadata:languages:" + username);
+                log.debug("📦 Caché 'languages' invalidado para: {}", username);
+            }
+            
+            // Caché de frameworks
+            var frameworksCache = cacheManager.getCache("frameworks");
+            if (frameworksCache != null) {
+                frameworksCache.evict("metadata:frameworks:" + username);
+                log.debug("📦 Caché 'frameworks' invalidado para: {}", username);
+            }
+            
             // Caché de CV
             var cvCache = cacheManager.getCache("technicalCV");
             if (cvCache != null) {

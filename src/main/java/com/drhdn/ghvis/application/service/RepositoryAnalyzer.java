@@ -15,9 +15,11 @@ import java.util.stream.Collectors;
  * - Frameworks y librerías
  * - Herramientas CI/CD
  * - Proyectos Open Source
+ * - Patrones de Arquitectura (NUEVO)
+ * - Arquetipos de Desarrollador (NUEVO)
  * 
  * @author GitStellarPrism Team
- * @version 1.0.0
+ * @version 1.1.0
  */
 @Service
 @Slf4j
@@ -25,55 +27,101 @@ public class RepositoryAnalyzer {
     
     /**
      * Lenguajes que NO son lenguajes de programación reales.
-     * Se excluyen formatos de documentación, configuración, etc.
      */
     private static final Set<String> EXCLUDED_LANGUAGES = Set.of(
-        // Formatos de documentación
-        "Jupyter Notebook",
-        "Markdown",
-        "reStructuredText",
-        "AsciiDoc",
-        "POD",
-        
-        // Formatos de configuración
-        "JSON",
-        "YAML",
-        "TOML",
-        "INI",
-        "XML",
-        
-        // Formatos de infraestructura
-        "Dockerfile",
-        "Makefile",
-        
-        // Frameworks que GitHub reporta como "lenguajes"
-        "Astro",  // Es un framework, no un lenguaje
-        "Svelte", // Es un framework, no un lenguaje (aunque tiene su sintaxis)
-        
-        // Otros
-        "Text",
-        "HTML",  // Markup, no programming
-        "CSS",   // Styling, no programming
-        "SCSS",
-        "Less"
+        "Jupyter Notebook", "Markdown", "reStructuredText", "AsciiDoc", "POD",
+        "JSON", "YAML", "TOML", "INI", "XML",
+        "Dockerfile", "Makefile",
+        "Astro", "Svelte",
+        "Text", "HTML", "CSS", "SCSS", "Less", "Shell"
     );
     
     /**
-     * Analiza lenguajes de programación usados
+     * Mapeo masivo de tecnologías clasificadas
      */
+    private static final Map<String, String> FRAMEWORK_MAPPINGS = Map.ofEntries(
+        // Frontend Core
+        Map.entry("react", "React"), Map.entry("reactjs", "React"),
+        Map.entry("vue", "Vue.js"), Map.entry("vuejs", "Vue.js"),
+        Map.entry("angular", "Angular"), Map.entry("svelte", "Svelte"),
+        Map.entry("nextjs", "Next.js"), Map.entry("nuxtjs", "Nuxt.js"),
+        Map.entry("gatsby", "Gatsby"), Map.entry("vite", "Vite"),
+        Map.entry("webpack", "Webpack"), Map.entry("tailwind", "Tailwind CSS"),
+        
+        // Backend Frameworks
+        Map.entry("spring-boot", "Spring Boot"), Map.entry("spring", "Spring Framework"),
+        Map.entry("django", "Django"), Map.entry("flask", "Flask"), Map.entry("fastapi", "FastAPI"),
+        Map.entry("express", "Express.js"), Map.entry("nestjs", "NestJS"),
+        Map.entry("laravel", "Laravel"), Map.entry("rails", "Ruby on Rails"),
+        Map.entry("aspnetcore", "ASP.NET Core"), Map.entry("dotnet", ".NET"),
+        Map.entry("quarkus", "Quarkus"), Map.entry("micronaut", "Micronaut"),
+        
+        // Mobile
+        Map.entry("react-native", "React Native"), Map.entry("flutter", "Flutter"),
+        Map.entry("ionic", "Ionic"), Map.entry("swiftui", "SwiftUI"),
+        Map.entry("kotlin-multiplatform", "KMP"),
+        
+        // Databases & Stores
+        Map.entry("mongodb", "MongoDB"), Map.entry("postgresql", "PostgreSQL"),
+        Map.entry("mysql", "MySQL"), Map.entry("redis", "Redis"),
+        Map.entry("elasticsearch", "Elasticsearch"), Map.entry("neo4j", "Neo4j"),
+        Map.entry("cassandra", "Cassandra"), Map.entry("dynamodb", "DynamoDB"),
+        Map.entry("sqlite", "SQLite"), Map.entry("mariadb", "MariaDB"),
+        
+        // DevOps & Cloud
+        Map.entry("docker", "Docker"), Map.entry("kubernetes", "Kubernetes"),
+        Map.entry("terraform", "Terraform"), Map.entry("aws", "AWS"),
+        Map.entry("azure", "Azure"), Map.entry("gcp", "Google Cloud"),
+        Map.entry("firebase", "Firebase"), Map.entry("vercel", "Vercel"),
+        Map.entry("nginx", "Nginx"), Map.entry("apache", "Apache"),
+        
+        // AI/ML
+        Map.entry("tensorflow", "TensorFlow"), Map.entry("pytorch", "PyTorch"),
+        Map.entry("keras", "Keras"), Map.entry("scikit-learn", "Scikit-learn"),
+        Map.entry("opencv", "OpenCV"), Map.entry("pandas", "Pandas"),
+        Map.entry("numpy", "NumPy"), Map.entry("huggingface", "Hugging Face"),
+        
+        // Testing
+        Map.entry("junit", "JUnit"), Map.entry("jest", "Jest"),
+        Map.entry("cypress", "Cypress"), Map.entry("selenium", "Selenium"),
+        Map.entry("mockito", "Mockito"), Map.entry("pytest", "Pytest")
+    );
+
+    /**
+     * Patrones de arquitectura detectables
+     */
+    private static final Map<String, String> ARCHITECTURE_PATTERNS = Map.ofEntries(
+        Map.entry("ddd", "Domain-Driven Design"),
+        Map.entry("hexagonal", "Hexagonal Architecture"),
+        Map.entry("clean-architecture", "Clean Architecture"),
+        Map.entry("cqrs", "CQRS"),
+        Map.entry("event-sourcing", "Event Sourcing"),
+        Map.entry("microservices", "Microservices"),
+        Map.entry("monolith", "Monolithic Architecture"),
+        Map.entry("serverless", "Serverless"),
+        Map.entry("mvc", "MVC Pattern"),
+        Map.entry("mvvm", "MVVM Pattern")
+    );
+
+    /**
+     * Categorías tecnológicas para detección de arquetipos
+     */
+    private static final Set<String> BACKEND_TECH = Set.of("Java", "Python", "Go", "C#", "PHP", "Ruby", "Spring Boot", "Django", "Express.js");
+    private static final Set<String> FRONTEND_TECH = Set.of("JavaScript", "TypeScript", "React", "Vue.js", "Angular", "HTML", "CSS");
+    private static final Set<String> MOBILE_TECH = Set.of("Swift", "Kotlin", "React Native", "Flutter", "Dart");
+    private static final Set<String> DATA_TECH = Set.of("SQL", "Python", "R", "Pandas", "TensorFlow");
+
     public Map<String, LanguageStats> analyzeLanguages(List<Repository> repos) {
         Map<String, LanguageStats> languageStats = new HashMap<>();
         
         repos.forEach(repo -> {
             Map<String, Long> distribution = repo.getLanguageDistribution();
             if (distribution != null && !distribution.isEmpty()) {
-                // El lenguaje principal es el que tiene más bytes
                 String primaryLanguage = distribution.entrySet().stream()
                     .max(Map.Entry.comparingByValue())
                     .map(Map.Entry::getKey)
                     .orElse(null);
                 
-                // Solo agregar si es un lenguaje de programación válido
                 if (primaryLanguage != null && !EXCLUDED_LANGUAGES.contains(primaryLanguage)) {
                     languageStats.computeIfAbsent(primaryLanguage, k -> new LanguageStats())
                         .addRepository(repo.getName());
@@ -84,130 +132,104 @@ public class RepositoryAnalyzer {
         return languageStats;
     }
     
-    /**
-     * Detecta frameworks desde topics
-     */
     public Map<String, FrameworkStats> detectFrameworks(List<Repository> repos) {
         Map<String, FrameworkStats> frameworkStats = new HashMap<>();
         
-        // Mapeo de topics conocidos a frameworks
-        Map<String, String> frameworkMappings = Map.ofEntries(
-            // Frontend
-            Map.entry("react", "React"),
-            Map.entry("reactjs", "React"),
-            Map.entry("vue", "Vue.js"),
-            Map.entry("vuejs", "Vue.js"),
-            Map.entry("angular", "Angular"),
-            Map.entry("svelte", "Svelte"),
-            Map.entry("nextjs", "Next.js"),
-            
-            // Backend
-            Map.entry("spring-boot", "Spring Boot"),
-            Map.entry("spring", "Spring Framework"),
-            Map.entry("django", "Django"),
-            Map.entry("flask", "Flask"),
-            Map.entry("fastapi", "FastAPI"),
-            Map.entry("express", "Express.js"),
-            Map.entry("nestjs", "NestJS"),
-            
-            // Mobile
-            Map.entry("react-native", "React Native"),
-            Map.entry("flutter", "Flutter"),
-            Map.entry("ionic", "Ionic"),
-            
-            // Databases
-            Map.entry("mongodb", "MongoDB"),
-            Map.entry("postgresql", "PostgreSQL"),
-            Map.entry("mysql", "MySQL"),
-            Map.entry("redis", "Redis"),
-            
-            // DevOps
-            Map.entry("docker", "Docker"),
-            Map.entry("kubernetes", "Kubernetes"),
-            Map.entry("terraform", "Terraform"),
-            
-            // AI/ML
-            Map.entry("tensorflow", "TensorFlow"),
-            Map.entry("pytorch", "PyTorch"),
-            Map.entry("machine-learning", "Machine Learning"),
-            Map.entry("artificial-intelligence", "Artificial Intelligence")
-        );
-        
         repos.forEach(repo -> {
-            List<String> topics = repo.getTopics();
-            if (topics != null) {
-                topics.forEach(topic -> {
-                    String framework = frameworkMappings.get(topic.toLowerCase());
-                    if (framework != null) {
-                        frameworkStats.computeIfAbsent(framework, k -> new FrameworkStats())
-                            .addRepository(repo.getName());
-                    }
-                });
-            }
+            // Detectar desde topics
+            analyzeTopics(repo, FRAMEWORK_MAPPINGS, frameworkStats);
+            
+            // Detectar desde descripción (simple keyword matching para frameworks importantes)
+            analyzeDescription(repo, FRAMEWORK_MAPPINGS, frameworkStats);
         });
         
         return frameworkStats;
     }
-    
-    /**
-     * Detecta herramientas CI/CD desde topics y descripción
-     */
-    public Set<String> detectCICD(List<Repository> repos) {
-        Set<String> cicdTools = new HashSet<>();
+
+    public Map<String, FrameworkStats> detectArchitectures(List<Repository> repos) {
+        Map<String, FrameworkStats> archStats = new HashMap<>();
         
-        // Keywords para detectar CI/CD
-        Map<String, String> cicdKeywords = Map.ofEntries(
-            Map.entry("docker", "Docker"),
-            Map.entry("docker-compose", "Docker Compose"),
-            Map.entry("dockerfile", "Docker"),
-            Map.entry("kubernetes", "Kubernetes"),
-            Map.entry("k8s", "Kubernetes"),
-            Map.entry("jenkins", "Jenkins"),
-            Map.entry("github-actions", "GitHub Actions"),
-            Map.entry("gitlab-ci", "GitLab CI"),
-            Map.entry("travis", "Travis CI"),
-            Map.entry("circleci", "CircleCI"),
-            Map.entry("terraform", "Terraform"),
-            Map.entry("ansible", "Ansible"),
-            Map.entry("ci-cd", "CI/CD"),
-            Map.entry("continuous-integration", "CI/CD")
+        repos.forEach(repo -> {
+            analyzeTopics(repo, ARCHITECTURE_PATTERNS, archStats);
+            
+            // Búsqueda básica en descripción para arquitectura
+            String desc = repo.getDescription() != null ? repo.getDescription().toLowerCase() : "";
+            ARCHITECTURE_PATTERNS.forEach((key, value) -> {
+                if (desc.contains(key.replace("-", " ")) || desc.contains(value.toLowerCase())) {
+                    archStats.computeIfAbsent(value, k -> new FrameworkStats())
+                        .addRepository(repo.getName());
+                }
+            });
+        });
+        
+        return archStats;
+    }
+    
+    public Map<String, FrameworkStats> detectCICD(List<Repository> repos) {
+        Map<String, FrameworkStats> cicdStats = new HashMap<>();
+        Map<String, String> cicdKeywords = Map.of(
+            "jenkins", "Jenkins", "github-actions", "GitHub Actions",
+            "gitlab-ci", "GitLab CI", "travis", "Travis CI",
+            "circleci", "CircleCI", "azure-pipelines", "Azure Pipelines"
         );
         
         repos.forEach(repo -> {
-            // Buscar en topics
-            List<String> topics = repo.getTopics();
-            if (topics != null) {
-                topics.forEach(topic -> {
-                    String tool = cicdKeywords.get(topic.toLowerCase());
-                    if (tool != null) {
-                        cicdTools.add(tool);
+            // Detectar desde topics
+            if (repo.getTopics() != null) {
+                repo.getTopics().forEach(t -> {
+                    String match = cicdKeywords.get(t.toLowerCase());
+                    if (match != null) {
+                        cicdStats.computeIfAbsent(match, k -> new FrameworkStats())
+                            .addRepository(repo.getName());
                     }
                 });
             }
             
-            // Buscar en descripción
-            String description = repo.getDescription();
-            if (description != null) {
-                String lowerDesc = description.toLowerCase();
-                cicdKeywords.forEach((keyword, tool) -> {
-                    if (lowerDesc.contains(keyword)) {
-                        cicdTools.add(tool);
+            // Detectar desde descripción (opcional, para consistencia con frameworks)
+            String desc = repo.getDescription();
+            if (desc != null) {
+                String lowerDesc = desc.toLowerCase();
+                cicdKeywords.forEach((key, value) -> {
+                    if (lowerDesc.contains(" " + key + " ") || lowerDesc.startsWith(key + " ") || lowerDesc.endsWith(" " + key)) {
+                         cicdStats.computeIfAbsent(value, k -> new FrameworkStats())
+                             .addRepository(repo.getName());
                     }
                 });
             }
         });
-        
-        return cicdTools;
+        return cicdStats;
     }
     
     /**
-     * Identifica proyectos Open Source
-     * 
-     * Criterios:
-     * - Tiene topics como "open-source", "opensource"
-     * - Tiene más de X stars (indica proyecto público activo)
-     * - No es fork
+     * Determina el arquetipo de desarrollador basado en las tecnologías detectadas
      */
+    public String determineArchetype(Map<String, LanguageStats> languages, Map<String, FrameworkStats> frameworks) {
+        int backendScore = calculateScore(languages, frameworks, BACKEND_TECH);
+        int frontendScore = calculateScore(languages, frameworks, FRONTEND_TECH);
+        int mobileScore = calculateScore(languages, frameworks, MOBILE_TECH);
+        int dataScore = calculateScore(languages, frameworks, DATA_TECH);
+
+        // Determinar rol dominante
+        if (mobileScore > backendScore && mobileScore > frontendScore) return "Mobile Developer";
+        if (dataScore > backendScore && dataScore > frontendScore) return "Data Engineer / Scientist";
+        if (Math.abs(backendScore - frontendScore) < 3 && (backendScore > 2 || frontendScore > 2)) return "Full Stack Developer";
+        if (backendScore > frontendScore) return "Backend Developer";
+        if (frontendScore > backendScore) return "Frontend Developer";
+        
+        return "Software Developer"; // Default
+    }
+
+    private int calculateScore(Map<String, LanguageStats> languages, Map<String, FrameworkStats> frameworks, Set<String> techSet) {
+        int score = 0;
+        for (var entry : languages.entrySet()) {
+            if (techSet.contains(entry.getKey())) score += entry.getValue().getProjectCount();
+        }
+        for (var entry : frameworks.entrySet()) {
+            if (techSet.contains(entry.getKey())) score += entry.getValue().getProjectCount() * 2;
+        }
+        return score;
+    }
+
     public List<OpenSourceProject> identifyOpenSourceProjects(List<Repository> repos) {
         return repos.stream()
             .filter(this::isOpenSourceProject)
@@ -216,63 +238,50 @@ public class RepositoryAnalyzer {
             .collect(Collectors.toList());
     }
     
-    /**
-     * Verifica si un repositorio es Open Source
-     */
     private boolean isOpenSourceProject(Repository repo) {
-        // No es fork
-        if (repo.isFork()) {
-            return false;
-        }
-        
-        // Es público
-        if (repo.isPrivate()) {
-            return false;
-        }
-        
-        // Tiene stars (indica actividad)
-        if (repo.getStargazersCount() > 0) {
-            return true;
-        }
-        
-        // O tiene topics de open source
+        if (repo.isFork() || repo.isPrivate()) return false;
+        if (repo.getStargazersCount() > 0) return true;
         List<String> topics = repo.getTopics();
-        if (topics != null) {
-            return topics.stream()
-                .anyMatch(t -> t.toLowerCase().contains("open-source") || 
-                              t.toLowerCase().contains("opensource"));
-        }
-        
-        return false;
+        return topics != null && topics.stream()
+            .anyMatch(t -> t.toLowerCase().contains("open-source") || t.toLowerCase().contains("opensource"));
     }
     
-    /**
-     * Genera resumen técnico consolidado
-     */
+    private void analyzeTopics(Repository repo, Map<String, String> mappings, Map<String, FrameworkStats> stats) {
+        if (repo.getTopics() == null) return;
+        repo.getTopics().forEach(topic -> {
+            String mapped = mappings.get(topic.toLowerCase());
+            if (mapped != null) {
+                stats.computeIfAbsent(mapped, k -> new FrameworkStats()).addRepository(repo.getName());
+            }
+        });
+    }
+
+    private void analyzeDescription(Repository repo, Map<String, String> mappings, Map<String, FrameworkStats> stats) {
+        String desc = repo.getDescription();
+        if (desc == null) return;
+        String lowerDesc = desc.toLowerCase();
+        mappings.forEach((key, value) -> {
+            // Búsqueda simple de palabra completa para evitar falsos positivos
+            if (lowerDesc.contains(" " + key + " ") || lowerDesc.startsWith(key + " ") || lowerDesc.endsWith(" " + key)) {
+                 stats.computeIfAbsent(value, k -> new FrameworkStats()).addRepository(repo.getName());
+            }
+        });
+    }
+
     public TechnicalMetadata generateTechnicalMetadata(List<Repository> repos) {
-        log.info("📊 Analizando {} repositorios para generar metadata técnica", repos.size());
-        
-        // DIAGNÓSTICO: Ver qué datos tenemos
-        if (!repos.isEmpty()) {
-            Repository firstRepo = repos.get(0);
-            log.info("🔍 DIAGNÓSTICO - Primer repositorio: {}", firstRepo.getName());
-            log.info("  - LanguageDistribution: {}", firstRepo.getLanguageDistribution());
-            log.info("  - Topics: {}", firstRepo.getTopics());
-            log.info("  - Description: {}", firstRepo.getDescription());
-            log.info("  - IsPrivate: {}", firstRepo.isPrivate());
-            log.info("  - Stars: {}", firstRepo.getStargazersCount());
-            log.info("  - IsFork: {}", firstRepo.isFork());
-        }
+        log.info("📊 Analizando {} repositorios para generar metadata técnica extendida", repos.size());
         
         Map<String, LanguageStats> languages = analyzeLanguages(repos);
         Map<String, FrameworkStats> frameworks = detectFrameworks(repos);
-        Set<String> cicdTools = detectCICD(repos);
+        Map<String, FrameworkStats> architectures = detectArchitectures(repos);
+        Map<String, FrameworkStats> cicdTools = detectCICD(repos);
         List<OpenSourceProject> openSourceProjects = identifyOpenSourceProjects(repos);
+        String archetype = determineArchetype(languages, frameworks);
         
-        log.info("✅ Metadata generada: {} lenguajes, {} frameworks, {} herramientas CI/CD, {} proyectos OS",
-            languages.size(), frameworks.size(), cicdTools.size(), openSourceProjects.size());
+        log.info("✅ Metadata generada: Rol {}, {} lenguajes, {} frameworks, {} arquitecturas",
+            archetype, languages.size(), frameworks.size(), architectures.size());
         
-        return new TechnicalMetadata(languages, frameworks, cicdTools, openSourceProjects);
+        return new TechnicalMetadata(languages, frameworks, architectures, cicdTools, openSourceProjects, archetype);
     }
     
     // ========== CLASES INTERNAS ==========
@@ -280,12 +289,7 @@ public class RepositoryAnalyzer {
     public static class LanguageStats {
         private int projectCount = 0;
         private final Set<String> repositories = new HashSet<>();
-        
-        public void addRepository(String repoName) {
-            repositories.add(repoName);
-            projectCount++;
-        }
-        
+        public void addRepository(String repoName) { repositories.add(repoName); projectCount++; }
         public int getProjectCount() { return projectCount; }
         public Set<String> getRepositories() { return repositories; }
     }
@@ -293,43 +297,26 @@ public class RepositoryAnalyzer {
     public static class FrameworkStats {
         private int projectCount = 0;
         private final Set<String> repositories = new HashSet<>();
-        
-        public void addRepository(String repoName) {
-            repositories.add(repoName);
-            projectCount++;
-        }
-        
+        public void addRepository(String repoName) { repositories.add(repoName); projectCount++; }
         public int getProjectCount() { return projectCount; }
         public Set<String> getRepositories() { return repositories; }
     }
     
     public record OpenSourceProject(
-        String name,
-        String fullName, // owner/name
-        String description,
-        Integer stars,
-        Integer forks,
-        String url,
-        List<String> topics
+        String name, String fullName, String description, Integer stars, Integer forks, String url, List<String> topics
     ) {
         public OpenSourceProject(Repository repo) {
-            this(
-                repo.getName(),
-                repo.getOwner() + "/" + repo.getName(),
-                repo.getDescription(),
-                repo.getStargazersCount(),
-                repo.getForksCount(),
-                repo.getUrl(),
-                repo.getTopics()
-            );
+            this(repo.getName(), repo.getOwner() + "/" + repo.getName(), repo.getDescription(),
+                repo.getStargazersCount(), repo.getForksCount(), repo.getUrl(), repo.getTopics());
         }
     }
     
     public record TechnicalMetadata(
         Map<String, LanguageStats> languages,
         Map<String, FrameworkStats> frameworks,
-        Set<String> cicdTools,
-        List<OpenSourceProject> openSourceProjects
+        Map<String, FrameworkStats> architectures,
+        Map<String, FrameworkStats> cicdTools,
+        List<OpenSourceProject> openSourceProjects,
+        String archetype
     ) {}
 }
-
