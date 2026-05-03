@@ -1,8 +1,11 @@
-# 🌟 GitStellarPrism - Visualizador de Repositorios GitHub
+![git-stellar-prism banner](docs/banner.png)
+
+# git-stellar-prism
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Java 21](https://img.shields.io/badge/Java-21-blue.svg)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.x-green.svg)](https://spring.io/projects/spring-boot)
+![visitors](https://komarev.com/ghpvc/?username=drhiidden&repo=git-stellar-prism&color=00ff88&style=flat-square)
 
 Aplicación Spring Boot WebFlux que transforma repositorios de GitHub en espectaculares visualizaciones 3D interactivas, con análisis de tecnologías y tiempo real.
 
@@ -273,6 +276,37 @@ grep "Webhook recibido" logs/application.log
 
 Este proyecto está bajo la licencia MIT. Ver el archivo `LICENSE` para más detalles.
 
+## Arquitectura
+
+```mermaid
+flowchart LR
+    subgraph GitHub
+        API[GitHub API]
+    end
+
+    subgraph Backend["Spring Boot + WebFlux (Reactive)"]
+        AUTH[OAuth2\nAuthController]
+        GHS[GitHubService\nWebClient]
+        ANA[AnalysisService\nLanguage Breakdown]
+        CVG[CVGenerator\nMarkdown Export]
+    end
+
+    subgraph Frontend["Browser"]
+        THREE[Three.js\n3D Renderer]
+        UI[Bootstrap 5\nDashboard]
+    end
+
+    User -->|"Login with GitHub"| AUTH
+    AUTH -->|"access_token"| GHS
+    GHS -->|"Repos + Commits"| API
+    API -->|"JSON data"| GHS
+    GHS --> ANA
+    ANA --> CVG
+    ANA -->|"Visualization data"| THREE
+    CVG -->|"Markdown CV"| UI
+    THREE --> UI
+```
+
 ## 🗺️ Roadmap — Visión 2.0
 
 El flujo actual (OAuth2 → visualización 3D → export Markdown) es una base sólida. La dirección natural de evolución:
@@ -297,12 +331,11 @@ Ideas, PRs y Issues para la Fase 2 son especialmente bienvenidos.
 
 ## 📚 Documentación Técnica
 
-La documentación de arquitectura, decisiones y guías de setup está en `.cursor/`:
+La documentación técnica de arquitectura y decisiones de diseño está en el repositorio.
 
-- [**INDICE_MAESTRO.md**](.cursor/INDICE_MAESTRO.md) - Índice completo
-- [**ARQUITECTURA_Y_BUENAS_PRACTICAS.md**](.cursor/ARQUITECTURA_Y_BUENAS_PRACTICAS.md) - Arquitectura completa
-- [**IMPLEMENTACIONES_Y_ESTRATEGIAS.md**](.cursor/IMPLEMENTACIONES_Y_ESTRATEGIAS.md) - CQRS, Rate Limit, CV
-- [**GUIAS_SETUP_Y_TESTING.md**](.cursor/GUIAS_SETUP_Y_TESTING.md) - Setup y testing
+## Metodología
+
+Desarrollado con [HCP (Human-Code-AI Protocol)](https://github.com/haletheia/human-code-ai-protocol) — protocolo git-native para Context Engineering que mantiene el conocimiento del proyecto versionado junto al código.
 
 ## 🆘 Soporte
 
