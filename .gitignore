@@ -47,3 +47,4 @@ Thumbs.db
 
 ### Maven ###
 .mvn/wrapper/maven-wrapper.jar
+.cursor/
