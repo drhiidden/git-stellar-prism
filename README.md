@@ -269,27 +269,41 @@ grep "Webhook recibido" logs/application.log
 
 Este proyecto está bajo la licencia MIT. Ver el archivo `LICENSE` para más detalles.
 
-## 📚 Documentación Consolidada
+## 🗺️ Roadmap — Visión 2.0
 
-📘 **Toda la documentación técnica está en `.cursor/`** (consolidada Octubre 2025)
+El flujo actual (OAuth2 → visualización 3D → export Markdown) es una base sólida. La dirección natural de evolución:
 
-### **Documentos Maestros**:
+### Fase actual: Visualizador 3D + CV Técnico
+- Visualización 3D de commits con Three.js ✅
+- Análisis de tecnologías y contribuciones ✅
+- Generación de CV técnico en Markdown ✅
+- Exportación con fecha de primer commit y URLs ✅
+
+### Fase 2 — CV Visual Generado por IA (próxima)
+El script de análisis existente, combinado con un LLM local (Ollama) o vía API, puede generar:
+- **Imagen de CV técnico** renderizada automáticamente (formato tarjeta LinkedIn / portfolio)
+- **Dashboard interactivo** con métricas reales de contribución
+- **Análisis narrativo** del perfil técnico del desarrollador
+- **Comparativa de tecnologías** por año / proyecto
+
+La arquitectura reactiva de Spring WebFlux hace este paso natural: el análisis ya está, solo hay que conectar la generación visual.
+
+### Contribuciones bienvenidas
+Ideas, PRs y Issues para la Fase 2 son especialmente bienvenidos.
+
+## 📚 Documentación Técnica
+
+La documentación de arquitectura, decisiones y guías de setup está en `.cursor/`:
+
 - [**INDICE_MAESTRO.md**](.cursor/INDICE_MAESTRO.md) - Índice completo
 - [**ARQUITECTURA_Y_BUENAS_PRACTICAS.md**](.cursor/ARQUITECTURA_Y_BUENAS_PRACTICAS.md) - Arquitectura completa
-- [**BUGFIXES_Y_SOLUCIONES.md**](.cursor/BUGFIXES_Y_SOLUCIONES.md) - Todos los bugs resueltos
 - [**IMPLEMENTACIONES_Y_ESTRATEGIAS.md**](.cursor/IMPLEMENTACIONES_Y_ESTRATEGIAS.md) - CQRS, Rate Limit, CV
 - [**GUIAS_SETUP_Y_TESTING.md**](.cursor/GUIAS_SETUP_Y_TESTING.md) - Setup y testing
 
-### **Quick Start**:
-1. **Setup** → [Guías de Setup](.cursor/GUIAS_SETUP_Y_TESTING.md#1-setup-inicial)
-2. **Arquitectura** → [Overview Arquitectónico](.cursor/ARQUITECTURA_Y_BUENAS_PRACTICAS.md)
-3. **HCP Templates** → [Quick Reference](.cursor/protocol_hcp/QUICK_REFERENCE.md)
-
 ## 🆘 Soporte
 
-- **Issues**: [GitHub Issues](https://github.com/tu-usuario/gitstellarprism/issues)
-- **Documentación Técnica**: `.cursor/` (ver arriba)
-- **Discusiones**: [GitHub Discussions](https://github.com/tu-usuario/gitstellarprism/discussions)
+- **Issues**: [GitHub Issues](https://github.com/drhiidden/git-stellar-prism/issues)
+- **Discusiones**: [GitHub Discussions](https://github.com/drhiidden/git-stellar-prism/discussions)
 
 ---
 
