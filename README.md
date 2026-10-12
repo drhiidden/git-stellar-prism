@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Java 21](https://img.shields.io/badge/Java-21-blue.svg)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.x-green.svg)](https://spring.io/projects/spring-boot)
-[![views](https://komarev.com/ghpvc/?username=lab-git-stellar-prism&label=views&color=0e75b6)](https://github.com/drhiidden/git-stellar-prism)
+[![views](https://komarev.com/ghpvc/?username=drhiidden&repo=git-stellar-prism&label=views&color=0e75b6)](https://github.com/drhiidden/git-stellar-prism)
 
 Aplicación Spring Boot WebFlux que transforma repositorios de GitHub en espectaculares visualizaciones 3D interactivas, con análisis de tecnologías y tiempo real.
 
